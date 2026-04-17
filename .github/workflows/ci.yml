@@ -1,0 +1,32 @@
+name: Scorer CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - "codex/**"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: "pip"
+
+      - name: Run Project CI Runner
+        run: |
+          chmod +x scripts/run_ci.sh
+          ./scripts/run_ci.sh
+
