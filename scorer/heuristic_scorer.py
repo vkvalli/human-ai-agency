@@ -12,7 +12,8 @@ def _clamp01(value: float) -> float:
 
 
 def _risk_band(reliance_risk: float) -> str:
-    if reliance_risk >= 0.67:
+    # Keep "high" reserved for clearer over-reliance patterns, not borderline mixed edits.
+    if reliance_risk >= 0.75:
         return "high"
     if reliance_risk >= 0.34:
         return "medium"
@@ -74,4 +75,3 @@ def score_heuristic(
         "reliance_band": _risk_band(risk),
         "drivers": drivers,
     }
-
