@@ -32,6 +32,7 @@ class EventPayload(BaseModel):
     final_text: str = ""
     intent_text: Optional[str] = None
 
+    # Canonical request fields
     latency_ms: int = 0
     accept_count: int = 0
     reject_count: int = 0
@@ -40,23 +41,39 @@ class EventPayload(BaseModel):
     rejected: bool = False
     confidence: Optional[float] = None
 
+    # Legacy aliases supported for integration compatibility
+    accept_latency_ms: Optional[int] = None
+    num_regenerations: Optional[int] = None
+    was_accepted: Optional[bool] = None
+    was_rejected: Optional[bool] = None
+
 
 class ScoreResponse(BaseModel):
+    # Current contract
     agency_score: int
     agency_band: str
     reliance_risk: float
     reliance_band: str
+    decision_type: str
     drivers: list[str] = Field(default_factory=list)
     text_scores: dict[str, Optional[float]] = Field(default_factory=dict)
     components: dict[str, float] = Field(default_factory=dict)
+
+    # Compatibility aliases (legacy contract)
+    band: str
+    behavioral_reliance_risk: float
+    component_breakdown: dict[str, float] = Field(default_factory=dict)
 
 
 app = FastAPI(title="Agency Scorer API", version="0.1.0")
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "ml_enabled": _env_flag("USE_ML_SCORER", False),
+    }
 
 
 @app.post("/score", response_model=ScoreResponse)
@@ -92,8 +109,11 @@ def score(payload: EventPayload) -> ScoreResponse:
         agency_band=agency["agency_band"],
         reliance_risk=reliance["reliance_risk"],
         reliance_band=reliance["reliance_band"],
+        decision_type=reliance["decision_type"],
         drivers=reliance["drivers"],
         text_scores=text_scores,
         components=agency["components"],
+        band=agency["agency_band"],
+        behavioral_reliance_risk=reliance["reliance_risk"],
+        component_breakdown=agency["components"],
     )
-

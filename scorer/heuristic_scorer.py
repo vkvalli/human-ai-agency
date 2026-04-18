@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from scorer.features import InteractionFeatures
+from scorer.label_logic import derive_label
 
 
 def _clamp01(value: float) -> float:
@@ -73,5 +74,6 @@ def score_heuristic(
     return {
         "reliance_risk": risk,
         "reliance_band": _risk_band(risk),
+        "decision_type": derive_label(f),
         "drivers": drivers,
     }
