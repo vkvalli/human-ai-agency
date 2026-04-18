@@ -140,14 +140,20 @@ def extract_features(event: Mapping[str, Any]) -> InteractionFeatures:
     intent_text_raw = event.get("intent_text")
     intent_text = str(intent_text_raw) if intent_text_raw is not None else None
 
-    latency_ms = _coalesce_int(event, "latency_ms", "decision_latency_ms", "time_to_decision_ms")
+    latency_ms = _coalesce_int(
+        event,
+        "latency_ms",
+        "accept_latency_ms",
+        "decision_latency_ms",
+        "time_to_decision_ms",
+    )
     accept_count = _coalesce_int(event, "accept_count", "accepted_count")
     reject_count = _coalesce_int(event, "reject_count", "rejected_count")
-    regen_count = _coalesce_int(event, "regen_count", "regeneration_count")
+    regen_count = _coalesce_int(event, "regen_count", "regeneration_count", "num_regenerations")
 
-    if accept_count == 0 and bool(event.get("accepted")):
+    if accept_count == 0 and bool(event.get("accepted") or event.get("was_accepted")):
         accept_count = 1
-    if reject_count == 0 and bool(event.get("rejected")):
+    if reject_count == 0 and bool(event.get("rejected") or event.get("was_rejected")):
         reject_count = 1
 
     confidence = _coalesce_float(event, "confidence", "self_confidence")
@@ -176,4 +182,3 @@ def extract_features(event: Mapping[str, Any]) -> InteractionFeatures:
         edit_distance_ratio=edit_distance_ratio,
         quick_accept=quick_accept,
     )
-

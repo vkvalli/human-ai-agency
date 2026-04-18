@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from scorer.features import InteractionFeatures
+from scorer.label_logic import derive_label
 
 
 def _clamp01(value: float) -> float:
@@ -12,7 +13,8 @@ def _clamp01(value: float) -> float:
 
 
 def _risk_band(reliance_risk: float) -> str:
-    if reliance_risk >= 0.67:
+    # Keep "high" reserved for clearer over-reliance patterns, not borderline mixed edits.
+    if reliance_risk >= 0.75:
         return "high"
     if reliance_risk >= 0.34:
         return "medium"
@@ -72,6 +74,6 @@ def score_heuristic(
     return {
         "reliance_risk": risk,
         "reliance_band": _risk_band(risk),
+        "decision_type": derive_label(f),
         "drivers": drivers,
     }
-
