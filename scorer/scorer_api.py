@@ -1,30 +1,31 @@
-"""FastAPI service for agency scoring."""
+"""FastAPI service for agency scoring and backend persistence."""
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+import logging
 import os
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from scorer.agency_formula import compute_agency_score
+from scorer.backend_logic import (
+    should_trigger_goal_drift,
+    should_trigger_low_score,
+    trend_direction,
+)
+from scorer.database.neon_client import NeonRepository
 from scorer.features import extract_features
 from scorer.heuristic_scorer import score_heuristic
 from scorer.text_analysis import analyze_text_scores
 
+logger = logging.getLogger(__name__)
 
-def _env_flag(name: str, default: bool) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() not in {"0", "false", "no", "off"}
-
-
-def _model_dump(model: BaseModel) -> dict[str, Any]:
-    if hasattr(model, "model_dump"):  # pydantic v2
-        return model.model_dump()
-    return model.dict()  # pydantic v1
+Period = Literal["day", "week", "month"]
+TaskType = Literal["study", "work", "personal"]
 
 
 class EventPayload(BaseModel):
@@ -40,6 +41,12 @@ class EventPayload(BaseModel):
     accepted: bool = False
     rejected: bool = False
     confidence: Optional[float] = None
+
+    # Session/backend context (optional, for persistence and triggering)
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+    task_type: Optional[TaskType] = None
+    deadline_active: Optional[bool] = None
 
     # Legacy aliases supported for integration compatibility
     accept_latency_ms: Optional[int] = None
@@ -65,19 +72,90 @@ class ScoreResponse(BaseModel):
     component_breakdown: dict[str, float] = Field(default_factory=dict)
 
 
-app = FastAPI(title="Agency Scorer API", version="0.1.0")
+class SessionStartRequest(BaseModel):
+    user_id: str
+    task_type: TaskType
+    deadline_active: bool = False
+    intent_text: Optional[str] = None
+    plan_id: Optional[str] = None
 
 
-@app.get("/health")
-def health() -> dict[str, Any]:
-    return {
-        "status": "ok",
-        "ml_enabled": _env_flag("USE_ML_SCORER", False),
-    }
+class SessionStartResponse(BaseModel):
+    session_id: str
+    started_at: datetime
 
 
-@app.post("/score", response_model=ScoreResponse)
-def score(payload: EventPayload) -> ScoreResponse:
+class HistoryPoint(BaseModel):
+    scored_at: datetime
+    agency_score: int
+    agency_band: str
+
+
+class HistoryResponse(BaseModel):
+    scores: list[HistoryPoint] = Field(default_factory=list)
+    trend_direction: Literal["up", "down", "flat"] = "flat"
+
+
+class TriggerCount(BaseModel):
+    trigger_type: str
+    count: int
+
+
+class InsightsResponse(BaseModel):
+    top_drift_triggers: list[TriggerCount] = Field(default_factory=list)
+    decision_composition: dict[str, int] = Field(default_factory=dict)
+    baseline_delta: float = 0.0
+    avg_by_task_type: dict[str, float] = Field(default_factory=dict)
+
+
+class NordProtectWebhookPayload(BaseModel):
+    user_id: str
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    app.state.neon_repo = None
+    dsn = os.getenv("NEON_CONNECTION_STR", "").strip()
+
+    if dsn:
+        repo = NeonRepository(dsn, init_schema=_env_flag("INIT_DB_SCHEMA", True))
+        try:
+            await repo.connect()
+            app.state.neon_repo = repo
+            logger.info("NEON repository connected")
+        except Exception as exc:  # pragma: no cover - runtime integration
+            logger.warning("NEON unavailable; backend persistence disabled: %s", exc)
+
+    yield
+
+    repo = getattr(app.state, "neon_repo", None)
+    if repo is not None:
+        await repo.close()
+
+
+app = FastAPI(title="Agency Scorer API", version="0.2.0", lifespan=_lifespan)
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _model_dump(model: BaseModel) -> dict[str, Any]:
+    if hasattr(model, "model_dump"):  # pydantic v2
+        return model.model_dump()
+    return model.dict()  # pydantic v1
+
+
+def _model_copy(model: BaseModel, *, update: dict[str, Any]) -> BaseModel:
+    if hasattr(model, "model_copy"):  # pydantic v2
+        return model.model_copy(update=update)
+    return model.copy(update=update)  # pydantic v1
+
+
+def _compute_score(payload: EventPayload) -> ScoreResponse:
     event = _model_dump(payload)
     features = extract_features(event)
 
@@ -117,3 +195,200 @@ def score(payload: EventPayload) -> ScoreResponse:
         behavioral_reliance_risk=reliance["reliance_risk"],
         component_breakdown=agency["components"],
     )
+
+
+def score(payload: EventPayload) -> ScoreResponse:
+    """Compatibility entrypoint used by tests and local invocation."""
+    return _compute_score(payload)
+
+
+def _get_repo_or_none() -> NeonRepository | None:
+    return getattr(app.state, "neon_repo", None)
+
+
+def _get_required_repo() -> NeonRepository:
+    repo = _get_repo_or_none()
+    if repo is None:
+        raise HTTPException(
+            status_code=503,
+            detail="NEON backend is not configured. Set NEON_CONNECTION_STR and restart the API.",
+        )
+    return repo
+
+
+async def _persist_score_and_triggers(
+    *,
+    repo: NeonRepository,
+    payload: EventPayload,
+    response: ScoreResponse,
+) -> None:
+    if not payload.session_id:
+        return
+
+    saved = await repo.persist_score(
+        session_id=payload.session_id,
+        agency_score=response.agency_score,
+        agency_band=response.agency_band,
+        reliance_risk=response.reliance_risk,
+        decision_type=response.decision_type,
+        components=response.components,
+        drivers=response.drivers,
+    )
+
+    now_utc = datetime.now(timezone.utc)
+
+    if should_trigger_low_score(
+        agency_band=response.agency_band,
+        reliance_risk=response.reliance_risk,
+    ):
+        await _create_trigger_if_allowed(
+            repo=repo,
+            user_id=saved.user_id,
+            session_id=payload.session_id,
+            trigger_type="low_score",
+            severity="high",
+            message="Low agency pattern detected. Pause and revise before sending.",
+            now_utc=now_utc,
+        )
+
+    recent_scores = await repo.get_recent_session_scores(session_id=payload.session_id, limit=3)
+    goal = await repo.get_user_goal(saved.user_id)
+
+    if should_trigger_goal_drift(latest_scores=recent_scores, agency_goal=goal):
+        await _create_trigger_if_allowed(
+            repo=repo,
+            user_id=saved.user_id,
+            session_id=payload.session_id,
+            trigger_type="goal_drift",
+            severity="medium",
+            message="Recent agency average is below your goal. Consider using Plan Mode.",
+            now_utc=now_utc,
+        )
+
+
+async def _create_trigger_if_allowed(
+    *,
+    repo: NeonRepository,
+    user_id: str,
+    session_id: str,
+    trigger_type: str,
+    severity: str,
+    message: str,
+    now_utc: datetime,
+) -> None:
+    in_cooldown = await repo.is_trigger_in_cooldown(
+        user_id=user_id,
+        session_id=session_id,
+        trigger_type=trigger_type,
+        now_utc=now_utc,
+    )
+    if in_cooldown:
+        return
+
+    await repo.create_drift_trigger(
+        user_id=user_id,
+        session_id=session_id,
+        trigger_type=trigger_type,
+        severity=severity,
+        message=message,
+        cooldown_minutes=10,
+    )
+
+
+@app.get("/health")
+def health() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "ml_enabled": _env_flag("USE_ML_SCORER", False),
+    }
+
+
+@app.post("/session/start", response_model=SessionStartResponse)
+async def session_start(payload: SessionStartRequest) -> SessionStartResponse:
+    repo = _get_required_repo()
+
+    try:
+        session = await repo.create_session(
+            user_id=payload.user_id,
+            task_type=payload.task_type,
+            deadline_active=payload.deadline_active,
+            intent_text=payload.intent_text,
+            plan_id=payload.plan_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return SessionStartResponse(
+        session_id=session["session_id"],
+        started_at=session["started_at"],
+    )
+
+
+@app.post("/score", response_model=ScoreResponse)
+async def score_endpoint(payload: EventPayload) -> ScoreResponse:
+    repo = _get_repo_or_none()
+
+    # If intent_text is missing but a plan is attached to this session, pull it for I-component enrichment.
+    if repo is not None and payload.session_id and not payload.intent_text:
+        try:
+            intent_text = await repo.get_session_intent_text(payload.session_id)
+            if intent_text:
+                payload = _model_copy(payload, update={"intent_text": intent_text})
+        except Exception:
+            # Scoring should still work even if backend context lookup fails.
+            pass
+
+    response = _compute_score(payload)
+
+    if repo is not None and payload.session_id:
+        try:
+            await _persist_score_and_triggers(repo=repo, payload=payload, response=response)
+        except Exception as exc:
+            logger.warning("Score persistence skipped due to backend error: %s", exc)
+
+    return response
+
+
+@app.get("/history", response_model=HistoryResponse)
+async def history(
+    user_id: str = Query(...),
+    period: Period = Query("week"),
+) -> HistoryResponse:
+    repo = _get_required_repo()
+
+    try:
+        score_rows = await repo.get_history(user_id=user_id, period=period)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    scores = [HistoryPoint(**row) for row in score_rows]
+    trend = trend_direction([point.agency_score for point in scores])
+
+    return HistoryResponse(scores=scores, trend_direction=trend)
+
+
+@app.get("/insights", response_model=InsightsResponse)
+async def insights(
+    user_id: str = Query(...),
+    period: Period = Query("week"),
+) -> InsightsResponse:
+    repo = _get_required_repo()
+
+    try:
+        result = await repo.get_insights(user_id=user_id, period=period)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return InsightsResponse(
+        top_drift_triggers=[TriggerCount(**item) for item in result["top_drift_triggers"]],
+        decision_composition=result["decision_composition"],
+        baseline_delta=result["baseline_delta"],
+        avg_by_task_type=result["avg_by_task_type"],
+    )
+
+
+@app.post("/webhook/nordprotect")
+async def webhook_nordprotect(payload: NordProtectWebhookPayload) -> dict[str, bool]:
+    repo = _get_required_repo()
+    await repo.set_breach_alert(payload.user_id)
+    return {"acknowledged": True}
