@@ -54,7 +54,7 @@ export default function TrackingSimulator() {
   const { addEvent, clearEvents, metrics } = useTracking();
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_35px_rgba(15,23,42,0.08)] sm:p-6">
+    <div className="rounded-3xl border border-sky-100/80 bg-white/90 p-5 shadow-[0_18px_44px_rgba(4,42,74,0.16)] backdrop-blur-xl sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-medium text-slate-500">Simulation Controls</p>
@@ -68,7 +68,7 @@ export default function TrackingSimulator() {
 
         <button
           onClick={clearEvents}
-          className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="rounded-full border border-sky-100 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 backdrop-blur-lg hover:bg-white"
         >
           Reset Events
         </button>
@@ -101,7 +101,7 @@ export default function TrackingSimulator() {
 
 function Metric({ label, value }) {
   return (
-    <div className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-[1.35rem] border border-sky-100 bg-white/72 p-4 backdrop-blur-lg">
       <p className="text-sm text-slate-500">{label}</p>
       <h4 className="mt-2 text-2xl font-bold text-slate-900">{value}</h4>
     </div>

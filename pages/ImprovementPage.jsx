@@ -80,7 +80,7 @@ export default function ImprovementPage() {
         interventions={dynamicInterventions}
       />
 
-      <GoalTracker goals={dynamicAgencyGoals} />
+      
 
       <PlanModePanel plan={dynamicPlanMode} agencyGoalTarget={agencyGoalTarget} />
     </div>

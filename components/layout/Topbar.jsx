@@ -9,24 +9,18 @@ const navItems = [
 
 export default function Topbar() {
   return (
-    <header className="relative overflow-hidden border-b border-sky-100 bg-gradient-to-b from-sky-200 via-cyan-100 to-slate-50">
-      {/* decorative background blobs */}
-      <div className="absolute left-10 top-6 h-24 w-24 rounded-full bg-white/20 blur-2xl" />
-      <div className="absolute right-20 top-10 h-32 w-32 rounded-full bg-cyan-300/20 blur-3xl" />
-      <div className="absolute left-1/3 top-0 h-28 w-72 rounded-full bg-sky-300/30 blur-2xl" />
-
-      <div className="relative mx-auto max-w-7xl px-6 py-6">
-        <div className="mb-5 flex items-center justify-between">
+    <header className="relative">
+      <div className="relative mx-auto max-w-7xl px-6 pt-10 pb-6">
+        <div className="mb-7 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-sky-700">Human vs AI</p>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            <p className="text-xl font-medium  font-bold tracking-tight text-slate-950">Human vs AI</p>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-[3.1rem]">
               Agency Dashboard
             </h1>
           </div>
-
         </div>
 
-        <div className="mx-auto max-w-5xl rounded-full border border-cyan-200/60 bg-gradient-to-r from-[#0ea5b7] via-[#22d3ee] to-[#38bdf8] p-3 shadow-[0_10px_30px_rgba(34,211,238,0.2)] backdrop-blur-md">
+        <div className="mx-auto max-w-5xl rounded-full border border-cyan-100/45 bg-gradient-to-r from-[#0f5f84]/88 via-[#1186bb]/82 to-[#279ae2]/76 p-3 shadow-[0_24px_60px_rgba(4,33,61,0.28)] backdrop-blur-xl">
           <nav className="flex flex-wrap items-center justify-center gap-3">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -38,8 +32,8 @@ export default function Topbar() {
                   className={({ isActive }) =>
                     `flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition ${
                       isActive
-                    ? "bg-cyan-100 text-cyan-900 shadow-[0_0_20px_rgba(34,211,238,0.35)]"
-                    : "text-cyan-50 hover:bg-white/10"
+                        ? "bg-white/94 text-slate-900 shadow-[0_12px_30px_rgba(255,255,255,0.3)]"
+                        : "text-cyan-50 hover:bg-white/10"
                     }`
                   }
                 >

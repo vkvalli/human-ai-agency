@@ -1,11 +1,11 @@
 export default function SectionHeader({ title, description }) {
   return (
     <div className="mb-5">
-      <h3 className="text-lg font-semibold tracking-tight text-cyan-800">
+      <h3 className="text-lg font-semibold tracking-tight text-sky-950">
         {title}
       </h3>
       {description ? (
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+        <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600/80">
           {description}
         </p>
       ) : null}
