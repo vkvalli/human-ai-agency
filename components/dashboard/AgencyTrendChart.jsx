@@ -18,8 +18,8 @@ import {
             <Area
               type="monotone"
               dataKey="score"
-              stroke="#6366f1"
-              fill="#6366f1"
+              stroke="#22d3ee"
+              fill="#22d3ee"
               fillOpacity={0.2}
             />
           </AreaChart>

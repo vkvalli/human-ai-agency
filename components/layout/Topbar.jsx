@@ -26,7 +26,7 @@ export default function Topbar() {
 
         </div>
 
-        <div className="mx-auto max-w-5xl rounded-full border border-white/50 bg-gradient-to-r from-sky-500 to-cyan-400 p-3 shadow-[0_18px_50px_rgba(14,116,144,0.18)]">
+        <div className="mx-auto max-w-5xl rounded-full border border-cyan-200/60 bg-gradient-to-r from-[#0ea5b7] via-[#22d3ee] to-[#38bdf8] p-3 shadow-[0_10px_30px_rgba(34,211,238,0.2)] backdrop-blur-md">
           <nav className="flex flex-wrap items-center justify-center gap-3">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -38,8 +38,8 @@ export default function Topbar() {
                   className={({ isActive }) =>
                     `flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition ${
                       isActive
-                        ? "bg-white text-sky-700 shadow-md"
-                        : "text-white hover:bg-white/20"
+                    ? "bg-cyan-100 text-cyan-900 shadow-[0_0_20px_rgba(34,211,238,0.35)]"
+                    : "text-cyan-50 hover:bg-white/10"
                     }`
                   }
                 >

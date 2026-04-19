@@ -1,6 +1,6 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
-const COLORS = ["#22c55e", "#f59e0b", "#3b82f6"];
+const COLORS = ["#22d3ee", "#22c55e", "#3b82f6"];
 
 export default function DecisionAutonomyChart({ data }) {
   return (
