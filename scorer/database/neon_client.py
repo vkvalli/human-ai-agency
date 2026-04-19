@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import json
 from pathlib import Path
 from typing import Any
 
@@ -106,9 +107,9 @@ class NeonRepository:
                 user_id,
                 task_title,
                 intent_text,
-                must_keep_points or [],
-                ai_help_scope or [],
-                human_owned_scope or [],
+                json.dumps(must_keep_points or []),
+                json.dumps(ai_help_scope or []),
+                json.dumps(human_owned_scope or []),
             )
         return str(row["plan_id"])
 
@@ -228,7 +229,7 @@ class NeonRepository:
                 agency_band,
                 reliance_risk,
                 decision_type,
-                components,
+                json.dumps(components or {}),
                 drivers,
             )
 

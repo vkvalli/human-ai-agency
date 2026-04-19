@@ -1,16 +1,44 @@
-# React + Vite
+# Human-AI Agency Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Backend Environment Wiring (Neon)
 
-Currently, two official plugins are available:
+The backend reads Neon connection settings from environment variables:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `NEON_CONNECTION_STR` (required for persistence)
+- `INIT_DB_SCHEMA` (default `true`)
+- `USE_TEXT_ANALYSIS` (default `false` in runner)
+- `APP_HOST` / `APP_PORT` (default `127.0.0.1:8000`)
 
-## React Compiler
+### 1) Create local env file
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+cp .env.example .env
+```
 
-## Expanding the ESLint configuration
+Then fill `NEON_CONNECTION_STR` in `.env`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 2) Run backend with env wiring
+
+```bash
+./scripts/run_backend.sh
+```
+
+This script:
+
+- loads `.env` and `.env.local` if present
+- optionally resolves `NEON_CONNECTION_STR` via `NEON_PROJECT_ID` + `neonctl`
+- starts `uvicorn` for `scorer.scorer_api:app`
+
+### 3) Optional dynamic connection string
+
+If you prefer not to store DSN directly, set this in `.env`:
+
+```bash
+NEON_PROJECT_ID=<your-neon-project-id>
+```
+
+`scripts/run_backend.sh` will resolve `NEON_CONNECTION_STR` at runtime using:
+
+```bash
+npx neonctl@latest connection-string --project-id <project-id>
+```

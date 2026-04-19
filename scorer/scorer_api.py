@@ -85,6 +85,51 @@ class SessionStartResponse(BaseModel):
     started_at: datetime
 
 
+class SessionEventFeatures(BaseModel):
+    latency_ms: int = 0
+    accept_count: int = 0
+    reject_count: int = 0
+    regen_count: int = 0
+    quick_accept: Optional[bool] = None
+    adoption_ratio: Optional[float] = None
+    manual_addition_ratio: Optional[float] = None
+    delete_ratio: Optional[float] = None
+    edit_distance_ratio: Optional[float] = None
+
+
+class SessionEventScore(BaseModel):
+    agency_score: int
+    agency_band: str
+    reliance_risk: float
+    reliance_band: Optional[str] = None
+    decision_type: Optional[str] = None
+    drivers: list[str] = Field(default_factory=list)
+    components: dict[str, float] = Field(default_factory=dict)
+
+
+class SessionEvent(BaseModel):
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+    task_type: Optional[TaskType] = None
+    deadline_active: Optional[bool] = None
+    plan_id: Optional[str] = None
+    intent_text: Optional[str] = None
+    scored_at: Optional[datetime] = None
+    features: SessionEventFeatures = Field(default_factory=SessionEventFeatures)
+    score: SessionEventScore
+    possible_trigger: Optional[str] = None
+
+
+class SessionEventsRequest(BaseModel):
+    events: list[SessionEvent] = Field(default_factory=list)
+
+
+class SessionEventsResponse(BaseModel):
+    accepted: int
+    persisted: int
+    failed: int
+
+
 class HistoryPoint(BaseModel):
     scored_at: datetime
     agency_score: int
@@ -216,6 +261,14 @@ def _get_required_repo() -> NeonRepository:
     return repo
 
 
+def _risk_band_from_score(risk: float) -> str:
+    if risk > 0.75:
+        return "high"
+    if risk > 0.45:
+        return "medium"
+    return "low"
+
+
 async def _persist_score_and_triggers(
     *,
     repo: NeonRepository,
@@ -322,6 +375,75 @@ async def session_start(payload: SessionStartRequest) -> SessionStartResponse:
         session_id=session["session_id"],
         started_at=session["started_at"],
     )
+
+
+@app.post("/session/events", response_model=SessionEventsResponse)
+async def session_events(payload: SessionEventsRequest) -> SessionEventsResponse:
+    repo = _get_required_repo()
+    accepted = len(payload.events)
+    persisted = 0
+    failed = 0
+
+    for event in payload.events:
+        try:
+            session_id = event.session_id
+            if not session_id:
+                if not event.user_id:
+                    raise ValueError("session_id or user_id is required")
+                session = await repo.create_session(
+                    user_id=event.user_id,
+                    task_type=event.task_type or "study",
+                    deadline_active=bool(event.deadline_active),
+                    intent_text=event.intent_text,
+                    plan_id=event.plan_id,
+                )
+                session_id = session["session_id"]
+
+            event_payload = EventPayload(
+                session_id=session_id,
+                user_id=event.user_id,
+                task_type=event.task_type,
+                deadline_active=event.deadline_active,
+                intent_text=event.intent_text,
+                latency_ms=event.features.latency_ms,
+                accept_count=event.features.accept_count,
+                reject_count=event.features.reject_count,
+                regen_count=event.features.regen_count,
+                accepted=event.features.accept_count > 0,
+                rejected=event.features.reject_count > 0,
+            )
+
+            reliance_band = event.score.reliance_band or _risk_band_from_score(
+                event.score.reliance_risk
+            )
+            decision_type = event.score.decision_type or "mixed"
+            components = event.score.components or {}
+
+            score_response = ScoreResponse(
+                agency_score=event.score.agency_score,
+                agency_band=event.score.agency_band,
+                reliance_risk=event.score.reliance_risk,
+                reliance_band=reliance_band,
+                decision_type=decision_type,
+                drivers=event.score.drivers,
+                text_scores={},
+                components=components,
+                band=event.score.agency_band,
+                behavioral_reliance_risk=event.score.reliance_risk,
+                component_breakdown=components,
+            )
+
+            await _persist_score_and_triggers(
+                repo=repo,
+                payload=event_payload,
+                response=score_response,
+            )
+            persisted += 1
+        except Exception as exc:  # pragma: no cover - runtime integration
+            failed += 1
+            logger.warning("Session event persistence failed: %s", exc)
+
+    return SessionEventsResponse(accepted=accepted, persisted=persisted, failed=failed)
 
 
 @app.post("/score", response_model=ScoreResponse)

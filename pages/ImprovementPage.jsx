@@ -48,6 +48,8 @@ export default function ImprovementPage() {
   const dynamicInterventions = buildInterventions(metrics);
   const dynamicAgencyGoals = buildAgencyGoals(events);
   const dynamicPlanMode = buildPlanMode(metrics);
+  const agencyGoalTarget =
+    dynamicAgencyGoals[dynamicAgencyGoals.length - 1]?.target ?? 70;
   const summary = buildIntentSummary(metrics);
 
   return (
@@ -63,6 +65,7 @@ export default function ImprovementPage() {
       <PlanModePanel
         tasks={dynamicPlanMode.tasks}
         tips={dynamicPlanMode.tips}
+        agencyGoalTarget={agencyGoalTarget}
       />
     </div>
   );

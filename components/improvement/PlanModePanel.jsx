@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import Card from "../common/Card";
 import SectionHeader from "../common/SectionHeader";
+import {
+  endDashboardSession,
+  getActiveDashboardSession,
+  startDashboardSession,
+} from "../../src/utils/extensionSessionBridge";
 
 function StatusBadge({ status }) {
   const styles = {
@@ -96,16 +101,41 @@ function buildImportedScheduleItems(tasks) {
   return items;
 }
 
-export default function PlanModePanel({ tasks, tips }) {
+export default function PlanModePanel({ tasks, tips, agencyGoalTarget = 70 }) {
+  const initialSession = getActiveDashboardSession();
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [scheduleItems, setScheduleItems] = useState([]);
   const [importedIntentMap, setImportedIntentMap] = useState(false);
+  const [activeSession, setActiveSession] = useState(
+    initialSession && initialSession.sessionId ? initialSession : null
+  );
+  const [sessionAction, setSessionAction] = useState("");
+  const [sessionStatus, setSessionStatus] = useState(
+    initialSession && initialSession.sessionId
+      ? `Session active (${String(initialSession.sessionId).slice(0, 8)}...)`
+      : "No active extension bridge session."
+  );
 
   const [scheduleTitle, setScheduleTitle] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
   const [scheduleType, setScheduleType] = useState("Planning");
 
   const workflowTitle = useMemo(() => buildWorkflowTitle(tasks), [tasks]);
+
+  const derivedIntentText = useMemo(() => {
+    const firstTip = tips && tips.length ? tips[0] : "";
+    return `${workflowTitle}. ${firstTip}`.trim();
+  }, [tips, workflowTitle]);
+
+  const derivedDeadlineActive = useMemo(
+    () =>
+      tasks.some(
+        (task) =>
+          task.title.toLowerCase().includes("deadline") ||
+          task.due.toLowerCase().includes("deadline")
+      ),
+    [tasks]
+  );
 
   function handleAddSchedule() {
     if (!scheduleTitle.trim() || !scheduleTime.trim()) {
@@ -138,6 +168,43 @@ export default function PlanModePanel({ tasks, tips }) {
     });
 
     setImportedIntentMap(true);
+  }
+
+  async function handleStartSession() {
+    if (sessionAction || activeSession) return;
+    setSessionAction("start");
+    setSessionStatus("Starting backend session...");
+
+    try {
+      const session = await startDashboardSession({
+        intentText: derivedIntentText,
+        agencyGoal: agencyGoalTarget,
+        taskType: "study",
+        deadlineActive: derivedDeadlineActive,
+      });
+      setActiveSession(session);
+      setSessionStatus(
+        `Session started (${String(session.sessionId).slice(0, 8)}...) via ${session.source}.`
+      );
+    } catch {
+      setSessionStatus("Could not start a session.");
+    } finally {
+      setSessionAction("");
+    }
+  }
+
+  function handleEndSession() {
+    if (sessionAction || !activeSession) return;
+    setSessionAction("end");
+
+    const ended = endDashboardSession(activeSession);
+    setActiveSession(null);
+    if (ended) {
+      setSessionStatus(`Session ended (${String(ended.sessionId).slice(0, 8)}...).`);
+    } else {
+      setSessionStatus("No session to end.");
+    }
+    setSessionAction("");
   }
 
   return (
@@ -292,7 +359,25 @@ export default function PlanModePanel({ tasks, tips }) {
             >
               Add Schedule
             </button>
+
+            <button
+              onClick={handleStartSession}
+              disabled={Boolean(sessionAction || activeSession)}
+              className="rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {sessionAction === "start" ? "Starting..." : "Start session"}
+            </button>
+
+            <button
+              onClick={handleEndSession}
+              disabled={Boolean(sessionAction || !activeSession)}
+              className="rounded-full border border-rose-200 bg-rose-50 px-5 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {sessionAction === "end" ? "Ending..." : "End session"}
+            </button>
           </div>
+
+          <p className="mt-4 text-xs font-medium text-slate-600">{sessionStatus}</p>
         </div>
       </div>
     </Card>
