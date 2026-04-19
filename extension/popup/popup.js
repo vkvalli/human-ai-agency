@@ -49,7 +49,9 @@ function renderState(state) {
 }
 
 function requestState() {
-  chrome.runtime.sendMessage({ type: "GET_POPUP_STATE" }, renderState);
+  chrome.runtime.sendMessage({ type: "FLUSH_NOW" }, () => {
+    chrome.runtime.sendMessage({ type: "GET_POPUP_STATE" }, renderState);
+  });
 }
 
 document.getElementById("refresh").addEventListener("click", requestState);

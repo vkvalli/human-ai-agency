@@ -218,6 +218,7 @@ async function flushPending() {
     });
 
     if (!response.ok) {
+      console.warn("[AgencyExt] flush non-200", response.status);
       return;
     }
 
@@ -415,6 +416,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       const rollingScores = await updateRolling(summary);
       await enqueueSummary(summary);
+      await flushPending();
       await appendDebugTrace({
         at: summary.scored_at || asIso(),
         host: summary.site_host || null,
@@ -442,6 +444,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         lastBannerTimes: state.lastBannerTimes,
       });
 
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === "FLUSH_NOW") {
+      await flushPending();
       sendResponse({ ok: true });
       return;
     }
