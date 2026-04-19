@@ -184,7 +184,7 @@ export default function PlanModePanel({ tasks, tips }) {
 
               <button
                 onClick={() => setShowScheduleForm((prev) => !prev)}
-                className="rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
+                className="rounded-full border border-cyan-600 bg-white px-4 py-2 text-sm font-semibold text-cyan-600 hover:bg-cyan-100"
               >
                 {showScheduleForm ? "Cancel" : "Add Schedule"}
               </button>

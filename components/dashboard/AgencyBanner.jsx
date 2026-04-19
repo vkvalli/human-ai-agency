@@ -5,8 +5,7 @@ export default function AgencyBanner({ data, onViewInsights }) {
     const navigate = useNavigate();
 
     return (
-      <div className="overflow-hidden rounded-3xl border-0 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 p-6 text-white shadow-[0_20px_60px_rgba(124,58,237,0.28)]">
-        <div className="relative">
+          <div className="relative overflow-hidden rounded-[2.5rem] border border-cyan-200/40 bg-gradient-to-r from-[#0b3a53] via-[#0ea5b7] to-[#22d3ee] p-6 text-white shadow-[0_20px_50px_rgba(20,184,166,0.22)]">
           <div className="absolute -left-8 top-0 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
           <div className="absolute right-10 top-4 h-24 w-24 rounded-full bg-pink-300/20 blur-2xl" />
   
@@ -22,7 +21,7 @@ export default function AgencyBanner({ data, onViewInsights }) {
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   onClick={onViewInsights}
-                  className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-violet-700 shadow-sm transition hover:scale-[1.02]"
+                  className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-cyan-600 shadow-sm transition hover:scale-[1.02]"
                 >
                   View insights
                 </button>
@@ -44,7 +43,6 @@ export default function AgencyBanner({ data, onViewInsights }) {
             </div>
           </div>
         </div>
-      </div>
     );
   }
   

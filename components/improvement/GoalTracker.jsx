@@ -25,7 +25,7 @@ export default function GoalTracker({ goals }) {
 
               <div className="relative h-3 rounded-full bg-slate-100">
                 <div
-                  className="h-3 rounded-full bg-gradient-to-r from-sky-400 to-violet-500"
+                  className="h-3 rounded-full bg-gradient-to-r from-[#0ea5b7] via-[#22d3ee] to-[#38bdf8]"
                   style={{ width: actualWidth }}
                 />
                 <div
