@@ -224,8 +224,33 @@ def _model_copy(model: BaseModel, *, update: dict[str, Any]) -> BaseModel:
     return model.copy(update=update)  # pydantic v1
 
 
+def _normalize_legacy_event_fields(event: dict[str, Any]) -> dict[str, Any]:
+    """Map legacy aliases onto canonical keys before feature extraction."""
+    normalized = dict(event)
+
+    if not normalized.get("latency_ms") and normalized.get("accept_latency_ms") is not None:
+        try:
+            normalized["latency_ms"] = int(normalized["accept_latency_ms"])
+        except (TypeError, ValueError):
+            pass
+
+    if not normalized.get("regen_count") and normalized.get("num_regenerations") is not None:
+        try:
+            normalized["regen_count"] = int(normalized["num_regenerations"])
+        except (TypeError, ValueError):
+            pass
+
+    if not normalized.get("accepted") and normalized.get("was_accepted") is True:
+        normalized["accepted"] = True
+
+    if not normalized.get("rejected") and normalized.get("was_rejected") is True:
+        normalized["rejected"] = True
+
+    return normalized
+
+
 def _compute_score(payload: EventPayload) -> ScoreResponse:
-    event = _model_dump(payload)
+    event = _normalize_legacy_event_fields(_model_dump(payload))
     features = extract_features(event)
 
     text_scores: dict[str, Optional[float]] = {}
