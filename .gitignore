@@ -1,4 +1,9 @@
 node_modules
 dist
 .env
+.env.local
+.venv/
+.neon
+.agents/
+skills-lock.json
 .DS_Store
