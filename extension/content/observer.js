@@ -25,17 +25,33 @@
 
     function onMutations() {
       if (!ns.extractor) return;
-      const aiText = ns.extractor.firstVisibleText(siteConfig.aiResponseSelectors || []);
+      const snapshot = ns.extractor.extractAssistantSnapshot(siteConfig);
+      const aiText = snapshot.ai_text || "";
       const currentHash = hash(aiText);
       if (currentHash && currentHash !== lastAiHash) {
         lastAiHash = currentHash;
-        emit("suggestion", { ai_text: aiText, timestamp: Date.now() });
+        emit("suggestion", {
+          ai_text: aiText,
+          timestamp: Date.now(),
+          capture_source: snapshot.capture_source || "response_dom",
+          capture_confidence: Number(snapshot.capture_confidence || 0),
+        });
       }
     }
 
     function onClick(event) {
       const target = event.target;
       if (!(target instanceof Element)) return;
+
+      if (matchesAny(target, siteConfig.copySelectors || [])) {
+        const snapshot = ns.extractor?.extractAssistantSnapshot(siteConfig);
+        emit("copy", {
+          source: "copy_button",
+          selected_text: snapshot?.ai_text || "",
+          timestamp: Date.now(),
+        });
+        return;
+      }
 
       if (matchesAny(target, siteConfig.regenerateSelectors || [])) {
         emit("regenerate", { timestamp: Date.now() });

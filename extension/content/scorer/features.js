@@ -127,9 +127,64 @@
     return null;
   }
 
+  function asBool(value) {
+    return value === true;
+  }
+
+  function computeAiContextConfidence({
+    aiTextLength,
+    adoptionRatio,
+    captureSource,
+    aiContextAgeMs,
+    regenerateObserved,
+    acceptCount,
+    rejectCount,
+    quickAccept,
+    latencyMs,
+  }) {
+    let confidence = 0;
+
+    if (aiTextLength >= 20 && captureSource) {
+      confidence += 0.45;
+    } else if (aiTextLength >= 20 && adoptionRatio >= 0.75) {
+      confidence += 0.3;
+    }
+    if (asBool(regenerateObserved)) {
+      confidence += 0.2;
+    }
+    if (adoptionRatio >= 0.6) {
+      confidence += 0.25;
+    }
+    if (acceptCount > 0) {
+      confidence += 0.25;
+    }
+    if (quickAccept) {
+      confidence += 0.15;
+    }
+    if (acceptCount > 0 && latencyMs > 0 && latencyMs <= 8000) {
+      confidence += 0.1;
+    }
+    if (rejectCount > acceptCount) {
+      confidence -= 0.1;
+    }
+    if (aiContextAgeMs > 60 * 1000) {
+      confidence -= 0.2;
+    }
+    if (aiTextLength > 0 && aiTextLength < 20) {
+      confidence -= 0.15;
+    }
+
+    return round3(clamp01(confidence));
+  }
+
   function extractFeatures(event) {
     const aiText = String(event.ai_text || "");
     const finalText = String(event.final_text || "");
+    const captureSourceRaw = event.ai_capture_source;
+    const captureSource =
+      typeof captureSourceRaw === "string" && captureSourceRaw.trim()
+        ? captureSourceRaw.trim()
+        : null;
 
     const latencyMs = coalesceInt(event, [
       "latency_ms",
@@ -152,11 +207,51 @@
     const confidenceRaw = coalesceFloat(event, ["confidence", "self_confidence"]);
     const confidence = confidenceRaw === null ? null : clamp01(confidenceRaw);
 
+    const normalizedAi = normalize(aiText);
+    const normalizedFinal = normalize(finalText);
+    const aiTextLength = normalizedAi.length;
+    const finalTextLength = normalizedFinal.length;
+    const hasFinalText = finalTextLength >= 3;
+
     const adoptionRatio = computeAdoptionRatio(aiText, finalText);
     const manualAdditionRatio = computeManualAdditionRatio(aiText, finalText);
     const deleteRatio = computeDeleteRatio(aiText, finalText);
     const editDistanceRatio = computeEditDistanceRatio(aiText, finalText);
     const quickAccept = Boolean(acceptCount > 0 && regenCount === 0 && latencyMs <= 3000);
+
+    const explicitConfidence = coalesceFloat(event, ["ai_context_confidence"]);
+    const aiContextAgeMs = Math.max(coalesceInt(event, ["ai_context_age_ms"], 0), 0);
+    const regenerateObserved = asBool(event.ai_regenerate_observed) || regenCount > 0;
+    const derivedConfidence = computeAiContextConfidence({
+      aiTextLength,
+      adoptionRatio,
+      captureSource,
+      aiContextAgeMs,
+      regenerateObserved,
+      acceptCount,
+      rejectCount,
+      quickAccept,
+      latencyMs,
+    });
+
+    const aiContextConfidence =
+      explicitConfidence === null
+        ? derivedConfidence
+        : round3(clamp01((0.6 * derivedConfidence) + (0.4 * explicitConfidence)));
+
+    const hasAiContext = aiContextConfidence >= 0.4;
+
+    let scoreMode = "unscored";
+    let unscoredReason = null;
+    if (!hasFinalText) {
+      unscoredReason = "missing_final_text";
+    } else if (aiContextConfidence >= 0.7) {
+      scoreMode = "full";
+    } else if (aiContextConfidence >= 0.4) {
+      scoreMode = "partial";
+    } else {
+      unscoredReason = "missing_ai_context";
+    }
 
     return {
       latency_ms: latencyMs,
@@ -172,6 +267,14 @@
       delete_ratio: deleteRatio,
       edit_distance_ratio: editDistanceRatio,
       quick_accept: quickAccept,
+      has_final_text: hasFinalText,
+      has_ai_context: hasAiContext,
+      ai_context_confidence: aiContextConfidence,
+      ai_capture_source: captureSource,
+      score_mode: scoreMode,
+      unscored_reason: scoreMode === "unscored" ? unscoredReason || "missing_ai_context" : null,
+      ai_text_length: aiTextLength,
+      final_text_length: finalTextLength,
     };
   }
 

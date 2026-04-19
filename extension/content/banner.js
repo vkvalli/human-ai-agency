@@ -78,7 +78,7 @@
     const topDriver = Array.isArray(score.drivers) && score.drivers.length ? score.drivers[0] : "No driver available";
     render({
       mode: band,
-      title: "Agency Score",
+      title: "Agency Score (Patched)",
       value: `${score.agency_score} (${band})`,
       subtitle: topDriver,
     });

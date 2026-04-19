@@ -5,8 +5,11 @@
   "version": "0.1.0",
   "permissions": ["storage", "alarms", "scripting", "activeTab", "tabs"],
   "host_permissions": [
+    "*://chatgpt.com/*",
     "*://*.chatgpt.com/*",
+    "*://claude.ai/*",
     "*://*.claude.ai/*",
+    "*://gemini.google.com/*",
     "*://*.gemini.google.com/*",
     "http://127.0.0.1/*",
     "http://localhost/*"
@@ -21,8 +24,11 @@
   "content_scripts": [
     {
       "matches": [
+        "*://chatgpt.com/*",
         "*://*.chatgpt.com/*",
+        "*://claude.ai/*",
         "*://*.claude.ai/*",
+        "*://gemini.google.com/*",
         "*://*.gemini.google.com/*"
       ],
       "js": [

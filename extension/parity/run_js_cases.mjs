@@ -16,19 +16,26 @@ const cases = JSON.parse(fs.readFileSync(casesPath, "utf-8"));
 const out = {};
 for (const entry of cases) {
   const result = scorer.computeScore(entry.payload);
+  const safeScore = result.score || {};
   out[entry.name] = {
+    status: result.status || "ok",
+    score_mode: result.score_mode || "full",
+    reason: result.reason || null,
     features: {
       adoption_ratio: result.features.adoption_ratio,
       manual_addition_ratio: result.features.manual_addition_ratio,
       delete_ratio: result.features.delete_ratio,
       edit_distance_ratio: result.features.edit_distance_ratio,
+      ai_context_confidence: result.features.ai_context_confidence,
+      has_ai_context: result.features.has_ai_context,
+      has_final_text: result.features.has_final_text,
     },
     score: {
-      decision_type: result.score.decision_type,
-      reliance_risk: result.score.reliance_risk,
-      reliance_band: result.score.reliance_band,
-      agency_score: result.score.agency_score,
-      agency_band: result.score.agency_band,
+      decision_type: safeScore.decision_type || null,
+      reliance_risk: safeScore.reliance_risk ?? null,
+      reliance_band: safeScore.reliance_band || null,
+      agency_score: safeScore.agency_score ?? null,
+      agency_band: safeScore.agency_band || null,
     },
   };
 }

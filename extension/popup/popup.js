@@ -1,6 +1,8 @@
 const scoreEl = document.getElementById("score");
 const bandEl = document.getElementById("band");
 const sessionEl = document.getElementById("session");
+const statusEl = document.getElementById("status");
+const hostEl = document.getElementById("host");
 const pendingEl = document.getElementById("pending");
 
 function setBand(band) {
@@ -24,6 +26,23 @@ function renderState(state) {
     sessionEl.textContent = `Session: ${state.session.session_id.slice(0, 8)}...`;
   } else {
     sessionEl.textContent = "No active session";
+  }
+
+  const statusMap = {
+    ok: "Last score valid",
+    partial: "Last score partial-confidence",
+    unscored: "Last interaction unscored",
+    unsupported_site: "Session active, unsupported page",
+    waiting_for_ai_capture: "Session active, waiting for AI capture",
+  };
+  const statusText = statusMap[state.last_score_status] || String(state.last_score_status || "unknown");
+  statusEl.textContent = `Status: ${statusText}`;
+
+  if (state.current_host) {
+    const supportLabel = state.page_supported ? "supported" : "unsupported";
+    hostEl.textContent = `Site: ${state.current_host} (${supportLabel})`;
+  } else {
+    hostEl.textContent = "Site: --";
   }
 
   pendingEl.textContent = `Pending sync: ${Number(state.pending_count || 0)}`;

@@ -13,6 +13,33 @@ function avg(values) {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
+function asIso() {
+  return new Date().toISOString();
+}
+
+function isSupportedHost(hostname) {
+  if (!hostname) return false;
+  const entries = Object.keys(constants.SITE_CONFIGS || {});
+  return entries.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+}
+
+async function getActiveTabContext() {
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs && tabs.length ? tabs[0] : null;
+    if (!tab || !tab.url) {
+      return { host: null, supported: false };
+    }
+    const url = new URL(tab.url);
+    return {
+      host: url.hostname || null,
+      supported: isSupportedHost(url.hostname || ""),
+    };
+  } catch {
+    return { host: null, supported: false };
+  }
+}
+
 async function getState() {
   const keys = constants.STORAGE_KEYS;
   const data = await storage.get([
@@ -20,6 +47,9 @@ async function getState() {
     keys.ROLLING_SCORES,
     keys.LAST_BANNER_TIMES,
     keys.PENDING_FLUSH,
+    keys.LAST_STATUS,
+    keys.CONTENT_STATUS,
+    keys.DEBUG_TRACE,
   ]);
 
   return {
@@ -27,16 +57,53 @@ async function getState() {
     rollingScores: Array.isArray(data[keys.ROLLING_SCORES]) ? data[keys.ROLLING_SCORES] : [],
     lastBannerTimes: data[keys.LAST_BANNER_TIMES] || {},
     pendingFlush: Array.isArray(data[keys.PENDING_FLUSH]) ? data[keys.PENDING_FLUSH] : [],
+    lastStatus: data[keys.LAST_STATUS] || null,
+    contentStatus: data[keys.CONTENT_STATUS] || null,
+    debugTrace: Array.isArray(data[keys.DEBUG_TRACE]) ? data[keys.DEBUG_TRACE] : [],
   };
+}
+
+async function setContentStatus(contentStatus) {
+  await storage.set({
+    [constants.STORAGE_KEYS.CONTENT_STATUS]: {
+      host: contentStatus?.host || null,
+      path: contentStatus?.path || null,
+      at: contentStatus?.at || asIso(),
+      last_event: contentStatus?.last_event || null,
+      detail: contentStatus?.detail || null,
+    },
+  });
+}
+
+async function appendDebugTrace(entry) {
+  const safeEntry = {
+    at: entry?.at || asIso(),
+    host: entry?.host || null,
+    event_name: entry?.event_name || "unknown",
+    detail: entry?.detail || null,
+  };
+  await storage.appendToArray(constants.STORAGE_KEYS.DEBUG_TRACE, safeEntry, 150);
 }
 
 async function setSession(session) {
   await storage.set({ [constants.STORAGE_KEYS.SESSION]: session });
 }
 
+async function setLastStatus(status) {
+  const payload = {
+    status: status?.status || "unscored",
+    reason: status?.reason || null,
+    score_mode: status?.score_mode || null,
+    scored_at: status?.scored_at || asIso(),
+    last_site_host: status?.last_site_host || null,
+    score: status?.score || null,
+  };
+  await storage.set({ [constants.STORAGE_KEYS.LAST_STATUS]: payload });
+}
+
 async function broadcastSessionSync(session) {
   const tabs = await chrome.tabs.query({
-    url: ["*://*.chatgpt.com/*", "*://*.claude.ai/*", "*://*.gemini.google.com/*"],
+    url: constants.SUPPORTED_CHAT_URL_PATTERNS,
   });
   for (const tab of tabs) {
     if (tab.id !== undefined) {
@@ -75,6 +142,7 @@ async function updateRolling(summary) {
     agency_band: summary.score.agency_band,
     reliance_risk: summary.score.reliance_risk,
     scored_at: summary.scored_at,
+    score_mode: summary.score_mode || "full",
   };
   return storage.appendToArray(
     constants.STORAGE_KEYS.ROLLING_SCORES,
@@ -85,7 +153,7 @@ async function updateRolling(summary) {
 
 function buildTrigger(rollingScores, session, summary) {
   const score = summary.score;
-  const lowHigh = score.agency_band === "low" && score.reliance_risk > 0.65;
+  const lowHigh = score.agency_band === "low" && score.reliance_risk > constants.STAGE_A_RISK_THRESHOLD;
 
   const threshold = Number(session?.agency_goal || 70);
   const latestThree = rollingScores.slice(-3);
@@ -160,6 +228,14 @@ async function flushPending() {
   }
 }
 
+function isValidScoredSummary(summary) {
+  if (!summary || typeof summary !== "object") return false;
+  if (summary.status !== "ok") return false;
+  if (!summary.score || typeof summary.score !== "object") return false;
+  if (!summary.score_mode || !["full", "partial"].includes(summary.score_mode)) return false;
+  return true;
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   ensureAlarm();
 });
@@ -192,7 +268,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const startIso =
         typeof message.started_at === "string" && message.started_at.trim()
           ? message.started_at
-          : new Date().toISOString();
+          : asIso();
       const session = {
         session_id: message.session_id || null,
         plan_id: message.plan_id || null,
@@ -205,6 +281,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         tab_switch_count: 0,
       };
       await setSession(session);
+      await setLastStatus({
+        status: "waiting_for_ai_capture",
+        reason: null,
+        score_mode: "unscored",
+        scored_at: startIso,
+        last_site_host: null,
+      });
       await broadcastSessionSync(session);
       await ensureAlarm();
       sendResponse({ ok: true, session });
@@ -224,7 +307,63 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       await flushPending();
       await clearSession();
+      await setLastStatus({
+        status: "unscored",
+        reason: "session_inactive",
+        score_mode: "unscored",
+        scored_at: asIso(),
+        last_site_host: null,
+      });
       await broadcastSessionSync(null);
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === "CONTENT_READY") {
+      await setContentStatus({
+        host: message.host || null,
+        path: message.path || null,
+        at: message.at || asIso(),
+        last_event: "content_ready",
+        detail: null,
+      });
+      await appendDebugTrace({
+        at: message.at || asIso(),
+        host: message.host || null,
+        event_name: "content_ready",
+        detail: { path: message.path || null },
+      });
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === "CONTENT_DEBUG_EVENT") {
+      await appendDebugTrace({
+        at: message.at || asIso(),
+        host: message.host || null,
+        event_name: message.event_name || "content_debug_event",
+        detail: message.detail || null,
+      });
+      await setContentStatus({
+        host: message.host || null,
+        path: null,
+        at: message.at || asIso(),
+        last_event: message.event_name || "content_debug_event",
+        detail: message.detail || null,
+      });
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === "SCORE_STATUS") {
+      await setLastStatus({
+        status: message.status || "unscored",
+        reason: message.reason || null,
+        score_mode: message.score_mode || null,
+        scored_at: message.scored_at || asIso(),
+        last_site_host: message.site_host || null,
+        score: message.score || null,
+      });
       sendResponse({ ok: true });
       return;
     }
@@ -237,6 +376,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       const state = await getState();
+
+      if (!isValidScoredSummary(summary)) {
+        await appendDebugTrace({
+          at: summary.scored_at || asIso(),
+          host: summary.site_host || null,
+          event_name: "score_event_ignored",
+          detail: {
+            status: summary.status || "unknown",
+            score_mode: summary.score_mode || null,
+            reason: summary.reason || "missing_ai_context",
+          },
+        });
+        await setLastStatus({
+          status: summary.status || "unscored",
+          reason: summary.reason || "missing_ai_context",
+          score_mode: summary.score_mode || "unscored",
+          scored_at: summary.scored_at || asIso(),
+          last_site_host: summary.site_host || null,
+          score: null,
+        });
+        sendResponse({ ok: true, ignored: true });
+        return;
+      }
+
       const session = state.session || {
         session_id: summary.session_id || null,
         plan_id: summary.plan_id || null,
@@ -252,6 +415,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       const rollingScores = await updateRolling(summary);
       await enqueueSummary(summary);
+      await appendDebugTrace({
+        at: summary.scored_at || asIso(),
+        host: summary.site_host || null,
+        event_name: "score_event_accepted",
+        detail: {
+          score_mode: summary.score_mode,
+          agency_score: summary.score?.agency_score ?? null,
+          agency_band: summary.score?.agency_band ?? null,
+        },
+      });
+      await setLastStatus({
+        status: summary.score_mode === "partial" ? "partial" : "ok",
+        reason: null,
+        score_mode: summary.score_mode,
+        scored_at: summary.scored_at || asIso(),
+        last_site_host: summary.site_host || null,
+        score: summary.score,
+      });
 
       await maybeShowStageATrigger({
         sender,
@@ -268,11 +449,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "GET_POPUP_STATE") {
       const state = await getState();
       const latest = state.rollingScores.length ? state.rollingScores[state.rollingScores.length - 1] : null;
+      const activeTab = await getActiveTabContext();
+      const sessionActive = Boolean(state.session && state.session.session_id);
+      const lastScoreStatus = activeTab.supported
+        ? state.lastStatus?.status || (sessionActive ? "waiting_for_ai_capture" : "unscored")
+        : (sessionActive ? "unsupported_site" : "unscored");
+
       sendResponse({
         ok: true,
         latest,
         session: state.session,
+        session_active: sessionActive,
+        page_supported: activeTab.supported,
+        current_host: activeTab.host,
+        last_score_status: lastScoreStatus,
+        last_scored_at: state.lastStatus?.scored_at || null,
+        last_site_host: state.lastStatus?.last_site_host || activeTab.host || null,
         pending_count: state.pendingFlush.length,
+        content_status: state.contentStatus,
+        debug_tail: state.debugTrace.slice(-5),
       });
       return;
     }

@@ -27,7 +27,11 @@
     );
   }
 
-  function computeAgencyScore(features, relianceRisk) {
+  function computeAgencyScore(features, relianceRisk, context = {}) {
+    if (context.status !== "ok" || context.score_mode === "unscored") {
+      return null;
+    }
+
     const r = clamp(relianceRisk, 0, 1);
     const s = clamp(features.adoption_ratio, 0, 1);
     const q = features.quick_accept ? 1 : 0;
@@ -35,7 +39,11 @@
     const e = editRatioComponent(features);
 
     const raw = 100 - (40 * r) - (20 * s) - (15 * q) + (15 * e) + (10 * c);
-    const score = Math.trunc(clamp(raw, 0, 100));
+    const clampedRaw = clamp(raw, 0, 100);
+    const score =
+      context.score_mode === "partial"
+        ? Math.trunc(clamp(60 + (clampedRaw - 60) * 0.55, 20, 95))
+        : Math.trunc(clampedRaw);
 
     return {
       agency_score: score,

@@ -11,10 +11,41 @@
     }
 
     const features = featureApi.extractFeatures(eventPayload);
-    const reliance = heuristicApi.scoreHeuristic(features);
-    const agency = formulaApi.computeAgencyScore(features, reliance.reliance_risk);
+    if (features.score_mode === "unscored") {
+      return {
+        status: "unscored",
+        score_mode: "unscored",
+        score_confidence: "none",
+        reason: features.unscored_reason || "missing_ai_context",
+        features,
+        score: null,
+      };
+    }
+
+    const scoreMode = features.score_mode === "partial" ? "partial" : "full";
+    const reliance =
+      scoreMode === "partial"
+        ? heuristicApi.scoreHeuristicPartial(features)
+        : heuristicApi.scoreHeuristic(features);
+    const agency = formulaApi.computeAgencyScore(features, reliance.reliance_risk, {
+      status: "ok",
+      score_mode: scoreMode,
+    });
+    if (!agency) {
+      return {
+        status: "unscored",
+        score_mode: "unscored",
+        score_confidence: "none",
+        reason: "invalid_scorer_state",
+        features,
+        score: null,
+      };
+    }
 
     return {
+      status: "ok",
+      score_mode: scoreMode,
+      score_confidence: scoreMode === "partial" ? "partial" : "high",
       features,
       score: {
         agency_score: agency.agency_score,
