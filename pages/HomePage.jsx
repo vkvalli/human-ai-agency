@@ -49,6 +49,27 @@ function buildMonthlyAutonomyData(metrics) {
   ];
 }
 
+function buildHistoryTrend(historyScores, range) {
+  const maxPoints = range === "week" ? 7 : 30;
+  const selected = historyScores.slice(-maxPoints);
+  if (!selected.length) {
+    return [];
+  }
+
+  return selected.map((point) => {
+    const scoredAt = new Date(point.scored_at);
+    const label =
+      range === "week"
+        ? scoredAt.toLocaleDateString([], { weekday: "short" })
+        : scoredAt.toLocaleDateString([], { month: "short", day: "numeric" });
+
+    return {
+      day: label,
+      score: clampScore(Number(point.agency_score || 0)),
+    };
+  });
+}
+
 function RangeToggle({ value, onChange }) {
   return (
     <div className="inline-flex rounded-full border border-cyan-200 bg-slate-50 p-1">
@@ -94,7 +115,7 @@ function ChartCardHeader({ title, description, range, onRangeChange }) {
 }
 
 export default function HomePage() {
-  const { metrics } = useTracking();
+  const { metrics, dataSource, historyScores } = useTracking();
   const insightsSectionRef = useRef(null);
   const [trendRange, setTrendRange] = useState("week");
   const [autonomyRange, setAutonomyRange] = useState("week");
@@ -118,8 +139,11 @@ export default function HomePage() {
     { name: "Mixed", value: metrics.mixed },
   ];
 
+  const backendTrendData = buildHistoryTrend(historyScores, trendRange);
   const trendData =
-    trendRange === "week"
+    dataSource === "backend" && backendTrendData.length > 0
+      ? backendTrendData
+      : trendRange === "week"
       ? buildWeeklyTrend(metrics.score)
       : buildMonthlyTrend(metrics.score);
 
@@ -144,7 +168,7 @@ export default function HomePage() {
 
       <LiveAgencyBanner status={liveAgencyStatus} />
 
-      <TrackingSimulator />
+      {dataSource === "local" ? <TrackingSimulator /> : null}
 
       <div ref={insightsSectionRef} className="grid gap-6 xl:grid-cols-2">
         <Card className="min-w-0 p-6 sm:p-7">
