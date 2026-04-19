@@ -1,6 +1,11 @@
 import { useState } from "react";
 import Card from "../common/Card";
 import SectionHeader from "../common/SectionHeader";
+import {
+  endDashboardSession,
+  getActiveDashboardSession,
+  startDashboardSession,
+} from "../../src/utils/extensionSessionBridge";
 
 function FieldCard({
   label,
@@ -30,8 +35,19 @@ const emptyPlan = {
   aiScope: "",
 };
 
-export default function PlanModePanel({ plan }) {
+export default function PlanModePanel({ plan, agencyGoalTarget = 70 }) {
+  const storedSession = getActiveDashboardSession();
+  const initialSession =
+    storedSession && storedSession.sessionId ? storedSession : null;
+
   const [form, setForm] = useState(emptyPlan);
+  const [activeSession, setActiveSession] = useState(initialSession);
+  const [statusText, setStatusText] = useState(
+    initialSession
+      ? `Session active (${String(initialSession.sessionId).slice(0, 8)}...)`
+      : "No active bridge session."
+  );
+  const [pendingAction, setPendingAction] = useState("");
 
   function updateField(key, value) {
     setForm((prev) => ({
@@ -46,6 +62,42 @@ export default function PlanModePanel({ plan }) {
 
   function clearPlan() {
     setForm(emptyPlan);
+  }
+
+  async function startSession() {
+    if (pendingAction) return;
+    setPendingAction("start");
+    setStatusText("Starting session bridge...");
+
+    try {
+      const session = await startDashboardSession({
+        intentText: form.intent || plan.intent || "",
+        agencyGoal: Number(agencyGoalTarget || 70),
+        taskType: "study",
+        deadlineActive: Boolean((form.deadline || "").trim()),
+      });
+      setActiveSession(session);
+      setStatusText(
+        `Session started (${String(session.sessionId).slice(0, 8)}...) via ${session.source}.`
+      );
+    } catch {
+      setStatusText("Could not start a session bridge.");
+    } finally {
+      setPendingAction("");
+    }
+  }
+
+  function endSession() {
+    if (pendingAction || !activeSession) return;
+    setPendingAction("end");
+    const closedSession = endDashboardSession(activeSession);
+    if (closedSession) {
+      setStatusText(`Session ended (${String(closedSession.sessionId).slice(0, 8)}...).`);
+    } else {
+      setStatusText("No active session to end.");
+    }
+    setActiveSession(null);
+    setPendingAction("");
   }
 
   return (
@@ -83,8 +135,28 @@ export default function PlanModePanel({ plan }) {
               >
                 Clear fields
               </button>
+
+              <button
+                type="button"
+                onClick={startSession}
+                disabled={Boolean(pendingAction || activeSession)}
+                className="rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {pendingAction === "start" ? "Starting..." : "Start session"}
+              </button>
+
+              <button
+                type="button"
+                onClick={endSession}
+                disabled={Boolean(pendingAction || !activeSession)}
+                className="rounded-full border border-rose-200 bg-rose-50 px-5 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {pendingAction === "end" ? "Ending..." : "End session"}
+              </button>
             </div>
           </div>
+
+          <p className="mt-4 text-xs font-medium text-slate-600">{statusText}</p>
 
           <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.85fr)]">
             <div className="space-y-3">

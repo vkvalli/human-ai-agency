@@ -61,6 +61,7 @@ export default function ImprovementPage() {
   const dynamicInterventions = buildInterventions(metrics);
   const dynamicAgencyGoals = buildAgencyGoals(events);
   const dynamicPlanMode = buildPlanMode(metrics);
+  const agencyGoalTarget = dynamicAgencyGoals[dynamicAgencyGoals.length - 1]?.target ?? 70;
   const analyses = {
     week: {
       label: "Last 7 days",
@@ -81,7 +82,7 @@ export default function ImprovementPage() {
 
       <GoalTracker goals={dynamicAgencyGoals} />
 
-      <PlanModePanel plan={dynamicPlanMode} />
+      <PlanModePanel plan={dynamicPlanMode} agencyGoalTarget={agencyGoalTarget} />
     </div>
   );
 }
