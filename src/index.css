@@ -7,6 +7,512 @@ html, body, #root {
 body {
   margin: 0;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  background: #f8fafc;
+  background: #04111b;
   color: #0f172a;
+}
+
+@keyframes oceanSceneDrift {
+  0% {
+    transform: scale(1.03) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.06) translate3d(-1.2%, -0.8%, 0);
+  }
+  100% {
+    transform: scale(1.03) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes oceanSceneDriftReverse {
+  0% {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.03) translate3d(1%, 0.8%, 0);
+  }
+  100% {
+    transform: scale(1.06) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes sceneBubbleFloat {
+  0% {
+    transform: translate3d(0, 24px, 0) scale(0.72);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.95;
+  }
+  52% {
+    transform: translate3d(var(--bubble-mid-x, 12px), -90px, 0) scale(1.06);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(var(--bubble-end-x, -12px), -210px, 0) scale(1.18);
+    opacity: 0;
+  }
+}
+
+@keyframes heroSceneFloat {
+  0% {
+    transform: scale(1.06) translate3d(0, 0, 0);
+    background-position: 66% 50%;
+  }
+  30% {
+    transform: scale(1.11) translate3d(-1.8%, -2.8%, 0);
+    background-position: 61% 46%;
+  }
+  68% {
+    transform: scale(1.1) translate3d(1.2%, 1.4%, 0);
+    background-position: 69% 52%;
+  }
+  100% {
+    transform: scale(1.06) translate3d(0, 0, 0);
+    background-position: 66% 50%;
+  }
+}
+
+@keyframes heroBubbleRise {
+  0% {
+    transform: translate3d(0, 18px, 0) scale(0.72);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.92;
+  }
+  54% {
+    transform: translate3d(var(--hero-bubble-mid-x, 10px), -72px, 0) scale(1.04);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(var(--hero-bubble-end-x, -10px), -160px, 0) scale(1.14);
+    opacity: 0;
+  }
+}
+
+@keyframes surfaceGlow {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.88;
+  }
+  50% {
+    transform: translate3d(0, 1.5%, 0) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.88;
+  }
+}
+
+@keyframes surfaceShimmer {
+  0% {
+    transform: translate3d(-3%, 0, 0) scaleX(1);
+    opacity: 0.26;
+  }
+  50% {
+    transform: translate3d(3%, 2%, 0) scaleX(1.05);
+    opacity: 0.42;
+  }
+  100% {
+    transform: translate3d(-2%, 0, 0) scaleX(1);
+    opacity: 0.26;
+  }
+}
+
+@keyframes causticField {
+  0% {
+    transform: translate3d(-2%, -1%, 0) scale(1.04);
+    opacity: 0.22;
+  }
+  50% {
+    transform: translate3d(2%, 2%, 0) scale(1.1);
+    opacity: 0.38;
+  }
+  100% {
+    transform: translate3d(4%, -2%, 0) scale(1.06);
+    opacity: 0.26;
+  }
+}
+
+@keyframes lightBeam {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scaleY(1);
+  }
+  50% {
+    transform: translate3d(1vw, 2vh, 0) rotate(1.2deg) scaleY(1.06);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scaleY(1);
+  }
+}
+
+@keyframes currentSwell {
+  0% {
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+  50% {
+    transform: translate3d(-2.5%, 6px, 0) scaleX(1.05);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scaleX(1);
+  }
+}
+
+@keyframes depthSurge {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(2%, -2%, 0) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.74;
+  }
+}
+
+@keyframes moteFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(16px, -28px, 0) scale(1.1);
+  }
+  100% {
+    transform: translate3d(-8px, -52px, 0) scale(0.94);
+  }
+}
+
+@keyframes bubbleRise {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.88);
+  }
+  50% {
+    transform: translate3d(14px, -28vh, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(-10px, -54vh, 0) scale(1.08);
+  }
+}
+
+@keyframes heroSheen {
+  0% {
+    transform: translate3d(-3%, 0, 0) scaleX(1);
+    opacity: 0.28;
+  }
+  50% {
+    transform: translate3d(3%, 4%, 0) scaleX(1.08);
+    opacity: 0.46;
+  }
+  100% {
+    transform: translate3d(-3%, 0, 0) scaleX(1);
+    opacity: 0.28;
+  }
+}
+
+@keyframes heroCaustics {
+  0% {
+    transform: translate3d(-2%, 0, 0) scale(1.02);
+    opacity: 0.18;
+  }
+  50% {
+    transform: translate3d(2%, 2%, 0) scale(1.08);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate3d(-2%, 0, 0) scale(1.02);
+    opacity: 0.18;
+  }
+}
+
+@keyframes heroWhale {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-4deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-12px, -18px, 0) rotate(-1deg) scale(1.03);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-4deg) scale(1);
+  }
+}
+
+@keyframes heroAura {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.98);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translate3d(1%, -2%, 0) scale(1.06);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.98);
+    opacity: 0.3;
+  }
+}
+
+@keyframes statFloat {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.ocean-scene-image {
+  background-image: url("/underwater-scene.png");
+  background-position: center center;
+  background-size: cover;
+  animation: oceanSceneDrift 38s ease-in-out infinite;
+}
+
+.ocean-scene-image-secondary {
+  background-image: url("/underwater-scene.png");
+  background-position: center center;
+  background-size: cover;
+  mix-blend-mode: screen;
+  opacity: 0.22;
+  filter: blur(10px) saturate(1.06);
+  animation: oceanSceneDriftReverse 46s ease-in-out infinite;
+}
+
+.ocean-scene-overlay {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.18), transparent 24%),
+    linear-gradient(to bottom, rgba(7, 31, 53, 0.06) 0%, rgba(4, 20, 35, 0.16) 52%, rgba(2, 12, 24, 0.42) 100%),
+    radial-gradient(circle at 0% 50%, rgba(4, 14, 30, 0.42), transparent 22%),
+    radial-gradient(circle at 100% 50%, rgba(4, 14, 30, 0.42), transparent 22%);
+}
+
+.ocean-scene-surface-glow {
+  background: radial-gradient(circle at 50% -16%, rgba(255, 255, 255, 0.95), rgba(180, 238, 255, 0.42) 32%, transparent 68%);
+  filter: blur(26px);
+  animation: surfaceGlow 20s ease-in-out infinite;
+}
+
+.ocean-scene-surface-shimmer {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.32), transparent 78%),
+    radial-gradient(circle at 50% 4%, rgba(255, 255, 255, 0.52), transparent 38%);
+  mix-blend-mode: screen;
+  filter: blur(18px);
+  animation: surfaceShimmer 14s ease-in-out infinite;
+}
+
+.ocean-side-bubble,
+.ocean-center-bubble {
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.08) 38%, rgba(80, 200, 255, 0.22) 72%, rgba(255, 255, 255, 0.06) 100%);
+  box-shadow:
+    inset 0 0 12px rgba(255, 255, 255, 0.42),
+    0 0 22px rgba(116, 220, 255, 0.32);
+  animation: sceneBubbleFloat 24s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.ocean-center-bubble {
+  opacity: 0.94;
+}
+
+.ocean-side-bubble {
+  opacity: 1;
+}
+
+.hero-banner-scene {
+  background-image: url("/hero-banner-scene.png");
+  background-position: 64% center;
+  background-size: 136% auto;
+  animation: heroSceneFloat 10s ease-in-out infinite;
+  will-change: transform, background-position;
+}
+
+.hero-banner-scene-overlay {
+  background:
+    linear-gradient(90deg, rgba(6, 21, 40, 0.28) 0%, rgba(7, 43, 73, 0.04) 48%, rgba(6, 48, 78, 0.12) 100%),
+    radial-gradient(circle at 72% 38%, rgba(140, 226, 255, 0.08), transparent 22%);
+}
+
+.hero-banner-copy-shade {
+  background: linear-gradient(90deg, rgba(6, 24, 45, 0.9) 0%, rgba(6, 33, 58, 0.72) 44%, rgba(7, 46, 78, 0.12) 100%);
+}
+
+.ocean-vignette {
+  background:
+    radial-gradient(circle at 50% -8%, rgba(255, 255, 255, 0.18), transparent 34%),
+    radial-gradient(circle at 0% 50%, rgba(0, 0, 0, 0.44), transparent 38%),
+    radial-gradient(circle at 100% 48%, rgba(0, 0, 0, 0.44), transparent 36%),
+    linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.12) 48%, rgba(0, 0, 0, 0.34) 100%);
+}
+
+.ocean-surface-glow {
+  animation: surfaceGlow 18s ease-in-out infinite;
+}
+
+.ocean-surface-shimmer {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.2) 24%, transparent 58%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.16) 0 2px,
+      rgba(147, 230, 255, 0.08) 2px 10px,
+      transparent 10px 24px
+    );
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  animation: surfaceShimmer 14s ease-in-out infinite;
+}
+
+.ocean-caustic-field {
+  background-image:
+    radial-gradient(circle at 16% 22%, rgba(255, 255, 255, 0.42), transparent 18%),
+    radial-gradient(circle at 74% 24%, rgba(212, 244, 255, 0.28), transparent 20%),
+    repeating-linear-gradient(
+      116deg,
+      rgba(255, 255, 255, 0.12) 0 2px,
+      transparent 2px 34px
+    ),
+    repeating-linear-gradient(
+      28deg,
+      rgba(125, 211, 252, 0.08) 0 2px,
+      transparent 2px 28px
+    );
+  background-size: 100% 100%, 100% 100%, 170% 170%, 150% 150%;
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  opacity: 0.34;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.98) 0%,
+    rgba(0, 0, 0, 0.72) 50%,
+    rgba(0, 0, 0, 0.4) 72%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.98) 0%,
+    rgba(0, 0, 0, 0.72) 50%,
+    rgba(0, 0, 0, 0.4) 72%,
+    transparent 100%
+  );
+  animation: causticField 24s ease-in-out infinite alternate;
+}
+
+.ocean-light-beam {
+  animation: lightBeam 18s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.ocean-current-swell {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.02),
+      rgba(154, 230, 255, 0.08) 46%,
+      rgba(255, 255, 255, 0.02)
+    );
+  border-top: 1px solid rgba(196, 243, 255, 0.08);
+  border-bottom: 1px solid rgba(196, 243, 255, 0.05);
+  filter: blur(18px);
+  animation: currentSwell 26s ease-in-out infinite;
+}
+
+.ocean-depth-surge {
+  animation: depthSurge 22s ease-in-out infinite;
+}
+
+.ocean-depth-surge-delayed {
+  animation: depthSurge 28s ease-in-out infinite;
+  animation-delay: -9s;
+}
+
+.ocean-mote {
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.35);
+  animation: moteFloat 18s linear infinite;
+}
+
+.ocean-bubble {
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.12);
+  animation: bubbleRise 26s linear infinite;
+}
+
+.hero-card-caustics {
+  background-image:
+    radial-gradient(circle at 24% 12%, rgba(255, 255, 255, 0.18), transparent 22%),
+    repeating-linear-gradient(
+      118deg,
+      rgba(255, 255, 255, 0.08) 0 2px,
+      transparent 2px 28px
+    ),
+    repeating-linear-gradient(
+      24deg,
+      rgba(153, 236, 255, 0.08) 0 2px,
+      transparent 2px 26px
+    );
+  mix-blend-mode: screen;
+  opacity: 0.26;
+  filter: blur(8px);
+  animation: heroCaustics 16s ease-in-out infinite;
+}
+
+.hero-card-sheen {
+  background:
+    radial-gradient(circle at 45% 0%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.14) 28%, transparent 66%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.28), transparent 80%);
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  animation: heroSheen 12s ease-in-out infinite;
+}
+
+.hero-bubble {
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.1) 36%, rgba(120, 228, 255, 0.24) 74%, rgba(255, 255, 255, 0.08) 100%);
+  box-shadow:
+    inset 0 0 10px rgba(255, 255, 255, 0.42),
+    0 0 20px rgba(120, 228, 255, 0.28);
+  animation: heroBubbleRise 14s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.hero-stat-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 18px 34px rgba(2, 28, 47, 0.28);
+  animation: statFloat 12s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocean-scene-image,
+  .ocean-scene-image-secondary,
+  .ocean-scene-surface-glow,
+  .ocean-scene-surface-shimmer,
+  .ocean-side-bubble,
+  .ocean-center-bubble,
+  .hero-banner-scene,
+  .hero-bubble,
+  .ocean-surface-glow,
+  .ocean-surface-shimmer,
+  .ocean-caustic-field,
+  .ocean-light-beam,
+  .ocean-current-swell,
+  .ocean-depth-surge,
+  .ocean-depth-surge-delayed,
+  .ocean-mote,
+  .ocean-bubble,
+  .hero-card-caustics,
+  .hero-card-sheen,
+  .hero-stat-card {
+    animation: none;
+  }
 }
