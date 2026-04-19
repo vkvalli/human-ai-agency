@@ -112,6 +112,49 @@ class NordProtectWebhookPayload(BaseModel):
     user_id: str
 
 
+class ScoredFeaturesPayload(BaseModel):
+    latency_ms: int = 0
+    adoption_ratio: float = 0.0
+    manual_addition_ratio: float = 0.0
+    delete_ratio: float = 0.0
+    edit_distance_ratio: float = 0.0
+    quick_accept: bool = False
+    regen_count: int = 0
+    accept_count: int = 0
+    reject_count: int = 0
+
+
+class LocalScorePayload(BaseModel):
+    agency_score: int
+    agency_band: str
+    reliance_risk: float
+    reliance_band: str
+    decision_type: str
+    drivers: list[str] = Field(default_factory=list)
+    components: dict[str, float] = Field(default_factory=dict)
+
+
+class SessionEventRecord(BaseModel):
+    session_id: str
+    scored_at: Optional[datetime] = None
+    plan_id: Optional[str] = None
+    task_type: Optional[TaskType] = None
+    deadline_active: Optional[bool] = None
+    possible_trigger: Optional[str] = None
+    features: ScoredFeaturesPayload
+    score: LocalScorePayload
+
+
+class SessionEventsRequest(BaseModel):
+    events: list[SessionEventRecord] = Field(default_factory=list)
+
+
+class SessionEventsResponse(BaseModel):
+    persisted_count: int
+    rejected_count: int
+    rejected: list[str] = Field(default_factory=list)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     app.state.neon_repo = None
@@ -235,35 +278,13 @@ async def _persist_score_and_triggers(
         drivers=response.drivers,
     )
 
-    now_utc = datetime.now(timezone.utc)
-
-    if should_trigger_low_score(
+    await _evaluate_and_store_triggers(
+        repo=repo,
+        user_id=saved.user_id,
+        session_id=payload.session_id,
         agency_band=response.agency_band,
         reliance_risk=response.reliance_risk,
-    ):
-        await _create_trigger_if_allowed(
-            repo=repo,
-            user_id=saved.user_id,
-            session_id=payload.session_id,
-            trigger_type="low_score",
-            severity="high",
-            message="Low agency pattern detected. Pause and revise before sending.",
-            now_utc=now_utc,
-        )
-
-    recent_scores = await repo.get_recent_session_scores(session_id=payload.session_id, limit=3)
-    goal = await repo.get_user_goal(saved.user_id)
-
-    if should_trigger_goal_drift(latest_scores=recent_scores, agency_goal=goal):
-        await _create_trigger_if_allowed(
-            repo=repo,
-            user_id=saved.user_id,
-            session_id=payload.session_id,
-            trigger_type="goal_drift",
-            severity="medium",
-            message="Recent agency average is below your goal. Consider using Plan Mode.",
-            now_utc=now_utc,
-        )
+    )
 
 
 async def _create_trigger_if_allowed(
@@ -293,6 +314,45 @@ async def _create_trigger_if_allowed(
         message=message,
         cooldown_minutes=10,
     )
+
+
+async def _evaluate_and_store_triggers(
+    *,
+    repo: NeonRepository,
+    user_id: str,
+    session_id: str,
+    agency_band: str,
+    reliance_risk: float,
+) -> None:
+    now_utc = datetime.now(timezone.utc)
+
+    if should_trigger_low_score(
+        agency_band=agency_band,
+        reliance_risk=reliance_risk,
+    ):
+        await _create_trigger_if_allowed(
+            repo=repo,
+            user_id=user_id,
+            session_id=session_id,
+            trigger_type="low_score",
+            severity="high",
+            message="Low agency pattern detected. Pause and revise before sending.",
+            now_utc=now_utc,
+        )
+
+    recent_scores = await repo.get_recent_session_scores(session_id=session_id, limit=3)
+    goal = await repo.get_user_goal(user_id)
+
+    if should_trigger_goal_drift(latest_scores=recent_scores, agency_goal=goal):
+        await _create_trigger_if_allowed(
+            repo=repo,
+            user_id=user_id,
+            session_id=session_id,
+            trigger_type="goal_drift",
+            severity="medium",
+            message="Recent agency average is below your goal. Consider using Plan Mode.",
+            now_utc=now_utc,
+        )
 
 
 @app.get("/health")
@@ -347,6 +407,45 @@ async def score_endpoint(payload: EventPayload) -> ScoreResponse:
             logger.warning("Score persistence skipped due to backend error: %s", exc)
 
     return response
+
+
+@app.post("/session/events", response_model=SessionEventsResponse)
+async def session_events(payload: SessionEventsRequest) -> SessionEventsResponse:
+    repo = _get_required_repo()
+
+    persisted_count = 0
+    rejected: list[str] = []
+
+    for idx, event in enumerate(payload.events):
+        try:
+            saved = await repo.persist_score(
+                session_id=event.session_id,
+                agency_score=event.score.agency_score,
+                agency_band=event.score.agency_band,
+                reliance_risk=event.score.reliance_risk,
+                decision_type=event.score.decision_type,
+                components=event.score.components,
+                drivers=event.score.drivers,
+            )
+
+            await _evaluate_and_store_triggers(
+                repo=repo,
+                user_id=saved.user_id,
+                session_id=event.session_id,
+                agency_band=event.score.agency_band,
+                reliance_risk=event.score.reliance_risk,
+            )
+            persisted_count += 1
+        except ValueError as exc:
+            rejected.append(f"event[{idx}]: {exc}")
+        except Exception as exc:  # pragma: no cover - runtime safety
+            rejected.append(f"event[{idx}]: persistence_failed ({exc})")
+
+    return SessionEventsResponse(
+        persisted_count=persisted_count,
+        rejected_count=len(rejected),
+        rejected=rejected,
+    )
 
 
 @app.get("/history", response_model=HistoryResponse)
