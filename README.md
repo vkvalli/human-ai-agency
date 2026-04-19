@@ -1,16 +1,74 @@
-# React + Vite
+# Human-AI Agency Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Hackathon project with three integrated surfaces:
 
-Currently, two official plugins are available:
+- `extension/`: MV3 browser extension with on-device scoring and session bridge
+- `scorer/`: FastAPI backend for scoring APIs, persistence, history, and insights
+- `src/`, `pages/`, `components/`: React/Vite dashboard UI
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Quick Start
 
-## React Compiler
+### 1) Install UI deps
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+```
 
-## Expanding the ESLint configuration
+### 2) Create Python venv + install backend deps
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3) Run backend
+
+```bash
+./scripts/run_backend.sh
+```
+
+Backend runs at `http://127.0.0.1:8000`.
+
+### 4) Run dashboard
+
+```bash
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+Dashboard runs at `http://127.0.0.1:5173`.
+
+### 5) Load extension
+
+Load unpacked extension from:
+
+- `extension/`
+
+## Backend Endpoints
+
+- `GET /health`
+- `POST /score`
+- `POST /session/start`
+- `POST /session/events`
+- `GET /history`
+- `GET /insights`
+
+## Testing
+
+Run backend test suite:
+
+```bash
+./scripts/run_ci.sh
+```
+
+Run extension parity/reliability checks:
+
+```bash
+node extension/parity/test_reliability_patch.mjs
+```
+
+## Notes
+
+- Text analysis is additive; backend still works if disabled.
+- Extension scoring supports confidence-aware modes: `full`, `partial`, `unscored`.
+- Dashboard is wired to backend history/insights and falls back to local simulation when backend data is unavailable.
