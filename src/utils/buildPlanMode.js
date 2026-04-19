@@ -1,107 +1,35 @@
 export function buildPlanMode(metrics) {
-    const tasks = [];
-    const tips = [];
-  
-    if (metrics.agencyLevel === "Low") {
-      tasks.push({
-        title: "Recovery Planning Session",
-        due: "Today · Priority",
-        status: "Needs Review",
-      });
-  
-      tips.push(
-        "Break the work into smaller human-owned decisions before using AI.",
-        "Use manual-first mode until decision ownership stabilizes."
-      );
-    }
-  
-    if (metrics.deadlineTriggers >= 1) {
-      tasks.push({
-        title: "Add Pre-Submit Review Checkpoint",
-        due: "Before next deadline",
-        status: "In Progress",
-      });
-  
-      tips.push(
-        "Add a pause-and-review step before any high-stakes submission.",
-        "Use scheduling to create buffer time before deadlines."
-      );
-    }
-  
-    if (metrics.tabSwitches >= 2) {
-      tasks.push({
-        title: "Focus Block Setup",
-        due: "Next work session",
-        status: "Planned",
-      });
-  
-      tips.push(
-        "Reduce tab switching by staying in one workspace until the decision is complete.",
-        "Cluster related work into one focused session instead of parallel multitasking."
-      );
-    }
-  
-    if (metrics.aiAccepts >= 2) {
-      tasks.push({
-        title: "Manual-First Draft Plan",
-        due: "Next creative task",
-        status: "Planned",
-      });
-  
-      tips.push(
-        "Create your own outline first, then use AI only for expansion or alternatives.",
-        "Review at least one AI-generated option manually before accepting it."
-      );
-    }
-  
-    if (metrics.manualEdits >= 2) {
-      tasks.push({
-        title: "Maintain Review Workflow",
-        due: "Ongoing",
-        status: "In Progress",
-      });
-  
-      tips.push(
-        "Keep your current review habit because it is helping preserve agency.",
-        "Maintain manual editing checkpoints in future workflows."
-      );
-    }
-  
-    if (tasks.length === 0) {
-      tasks.push(
-        {
-          title: "Weekly Intent Planning",
-          due: "This week",
-          status: "Planned",
-        },
-        {
-          title: "Project Reflection Checkpoint",
-          due: "Next major task",
-          status: "Planned",
-        }
-      );
-  
-      tips.push(
-        "Use AI as support for structure and options, not final authority.",
-        "Plan tasks around decision checkpoints rather than only deadlines.",
-        "Preserve your own first-pass thinking before involving AI."
-      );
-    }
-  
-    const uniqueTasks = dedupeTasks(tasks).slice(0, 4);
-    const uniqueTips = [...new Set(tips)].slice(0, 4);
-  
-    return {
-      tasks: uniqueTasks,
-      tips: uniqueTips,
-    };
-  }
-  
-  function dedupeTasks(tasks) {
-    const seen = new Set();
-    return tasks.filter((task) => {
-      if (seen.has(task.title)) return false;
-      seen.add(task.title);
-      return true;
-    });
-  }
+  const intent =
+    metrics.agencyLevel === "Low"
+      ? "Recover decision ownership on this project by defining the core direction myself first and using AI only after the human goal is clear."
+      : metrics.agencyLevel === "Medium"
+      ? "Complete this project with steady human judgment, especially during fast or pressure-heavy moments."
+      : "Protect a strong level of decision ownership while using AI as support instead of authority.";
+
+  const mustKeepPoints = [
+    "Final judgment and approval stay with me.",
+    "The output must keep my voice, logic, and priorities.",
+    "Important claims or choices need a manual review before submit.",
+  ].join("\n");
+
+  const scope =
+    metrics.tabSwitches >= 2
+      ? "I will define the project direction, choose priorities, draft the core structure, and finish the review in one focused session."
+      : "I will own the project direction, key decisions, first-pass structure, and the final review before anything is submitted.";
+
+  const deadline =
+    metrics.deadlineTriggers >= 1 ? "Before next deadline" : "This week";
+
+  const aiScope =
+    metrics.aiAccepts >= 2
+      ? "AI can help with outlining, reframing, summarizing options, and improving clarity only after I provide the initial intent and scope. AI should not decide the final wording, final reasoning, or submission choice for me."
+      : "AI can support brainstorming, structure, rewrite suggestions, and gap-checking after I set the direction. AI should stay out of final approval, priority setting, and any decision that changes the meaning of the work.";
+
+  return {
+    intent,
+    mustKeepPoints,
+    scope,
+    deadline,
+    aiScope,
+  };
+}
