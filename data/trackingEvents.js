@@ -1,0 +1,36 @@
+export const sampleTrackingEvents = [
+    {
+      id: 1,
+      timestamp: Date.now() - 1000 * 60 * 20,
+      type: "ai_accept",
+      app: "ChatGPT",
+      page: "essay-help",
+      confidence: 2,
+      intentMatch: "not_sure",
+      revisionDepth: "low",
+    },
+    {
+      id: 2,
+      timestamp: Date.now() - 1000 * 60 * 18,
+      type: "manual_edit",
+      app: "Google Docs",
+      page: "assignment-draft",
+      confidence: 4,
+      intentMatch: "yes",
+      revisionDepth: "high",
+    },
+    {
+      id: 3,
+      timestamp: Date.now() - 1000 * 60 * 16,
+      type: "tab_switch",
+      app: "Chrome",
+      page: "multiple-tabs",
+    },
+    {
+      id: 4,
+      timestamp: Date.now() - 1000 * 60 * 12,
+      type: "deadline_trigger",
+      app: "Calendar",
+      page: "submission-deadline",
+    },
+  ];

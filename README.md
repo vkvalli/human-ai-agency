@@ -1,108 +1,74 @@
-# Human-AI Agency Scorer
+# Human-AI Agency Platform
 
-Hackathon scorer service for estimating human decision agency when working with AI suggestions.
+Hackathon project with three integrated surfaces:
 
-This repo currently focuses on the `scorer/` module (FastAPI + heuristic scoring + additive text analysis).
-
-## What This Service Does
-
-- Computes an `agency_score` in `[0, 100]`
-- Computes behavioral `reliance_risk` in `[0, 1]`
-- Assigns bands (`low`, `medium`, `high`)
-- Assigns `decision_type` (`ai_led`, `mixed`, `user_led`)
-- Provides interpretable `drivers` and component breakdown
-- Supports text-analysis enrichment (`intent_preservation`, `rewrite_depth`, `ai_origin`) as additive signals
-
-## Project Structure
-
-- `scorer/features.py`: behavioral feature extraction + normalization
-- `scorer/heuristic_scorer.py`: primary reliance scorer
-- `scorer/agency_formula.py`: final agency score formula
-- `scorer/text_analysis.py`: additive text-analysis layer (optional/fallback-safe)
-- `scorer/scorer_api.py`: FastAPI endpoints
-- `scorer/tests/`: unit and evaluation tests
-- `scripts/run_ci.sh`: local/CI runner
-- `SCORER_INTEGRATION_CONTRACT.md`: API handoff contract for integration
-- `SCORER_DEMO_NOTES.md`: demo framing guardrails
+- `extension/`: MV3 browser extension with on-device scoring and session bridge
+- `scorer/`: FastAPI backend for scoring APIs, persistence, history, and insights
+- `src/`, `pages/`, `components/`: React/Vite dashboard UI
 
 ## Quick Start
 
-### 1) Create and activate venv
+### 1) Install UI deps
+
+```bash
+npm install
+```
+
+### 2) Create Python venv + install backend deps
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-### 2) Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 3) Run tests
+### 3) Run backend
 
 ```bash
-HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m pytest scorer/tests -q
+./scripts/run_backend.sh
 ```
 
-### 4) Start API
+Backend runs at `http://127.0.0.1:8000`.
+
+### 4) Run dashboard
 
 ```bash
-python -m uvicorn scorer.scorer_api:app --host 127.0.0.1 --port 8001
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-## Endpoints
+Dashboard runs at `http://127.0.0.1:5173`.
+
+### 5) Load extension
+
+Load unpacked extension from:
+
+- `extension/`
+
+## Backend Endpoints
 
 - `GET /health`
 - `POST /score`
+- `POST /session/start`
+- `POST /session/events`
+- `GET /history`
+- `GET /insights`
 
-Health response:
+## Testing
 
-```json
-{
-  "status": "ok",
-  "ml_enabled": false
-}
-```
-
-For full request/response schema (including canonical + compatibility fields), see:
-
-- [SCORER_INTEGRATION_CONTRACT.md](SCORER_INTEGRATION_CONTRACT.md)
-
-## Operating Modes
-
-- Normal mode (default): `USE_TEXT_ANALYSIS=true`
-- Safe mode (fallback): `USE_TEXT_ANALYSIS=false`
-
-Example:
-
-```bash
-USE_TEXT_ANALYSIS=false python -m uvicorn scorer.scorer_api:app --host 127.0.0.1 --port 8001
-```
-
-When text analysis is disabled/unavailable, scorer still returns valid JSON and sets `text_scores` to `{}`.
-
-## CI / Runner
-
-Run the same flow used by CI:
+Run backend test suite:
 
 ```bash
 ./scripts/run_ci.sh
 ```
 
-GitHub Actions workflow:
+Run extension parity/reliability checks:
 
-- `.github/workflows/ci.yml`
+```bash
+node extension/parity/test_reliability_patch.mjs
+```
 
-## Integration Notes
+## Notes
 
-- Canonical request fields are preferred, but legacy aliases are supported for teammate compatibility:
-  - `accept_latency_ms`, `num_regenerations`, `was_accepted`, `was_rejected`
-- Response includes both canonical and compatibility alias fields (`band`, `behavioral_reliance_risk`, `component_breakdown`).
-
-## Demo Framing Guardrails
-
-- `intent_preservation` depends on quality/specificity of `intent_text`.
-- `rewrite_depth` measures substantive revision depth, not objective writing quality.
-
+- Text analysis is additive; backend still works if disabled.
+- Extension scoring supports confidence-aware modes: `full`, `partial`, `unscored`.
+- Dashboard is wired to backend history/insights and falls back to local simulation when backend data is unavailable.
