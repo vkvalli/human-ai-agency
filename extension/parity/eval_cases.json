@@ -1,0 +1,155 @@
+[
+  {
+    "name": "case_01_exact_copy_instant_accept",
+    "payload": {
+      "ai_text": "Here is a polished extension request email that stays concise and professional.",
+      "final_text": "Here is a polished extension request email that stays concise and professional.",
+      "latency_ms": 800,
+      "accepted": true,
+      "regen_count": 0
+    }
+  },
+  {
+    "name": "case_02_exact_copy_slow_review",
+    "payload": {
+      "ai_text": "Here is a polished extension request email that stays concise and professional.",
+      "final_text": "Here is a polished extension request email that stays concise and professional.",
+      "latency_ms": 18000,
+      "accepted": true,
+      "regen_count": 0
+    }
+  },
+  {
+    "name": "case_03_major_manual_rewrite",
+    "payload": {
+      "ai_text": "The recommendation is to keep your response short and generic.",
+      "final_text": "I disagree with this approach. I will present my own reasoning, tradeoffs, and concrete plan.",
+      "latency_ms": 20000,
+      "accepted": false,
+      "rejected": true,
+      "regen_count": 1
+    }
+  },
+  {
+    "name": "case_04_moderate_adaptation",
+    "payload": {
+      "ai_text": "Please send this brief project update to your team.",
+      "final_text": "Please send this project update to your team, and include blockers and next steps.",
+      "latency_ms": 7000,
+      "accepted": true,
+      "regen_count": 1
+    }
+  },
+  {
+    "name": "case_05_quick_accept_boundary_2990",
+    "payload": {
+      "ai_text": "Use this direct response template for your client update.",
+      "final_text": "Use this direct response template for your client update.",
+      "latency_ms": 2990,
+      "accepted": true,
+      "regen_count": 0
+    }
+  },
+  {
+    "name": "case_06_quick_accept_boundary_3010",
+    "payload": {
+      "ai_text": "Use this direct response template for your client update.",
+      "final_text": "Use this direct response template for your client update.",
+      "latency_ms": 3010,
+      "accepted": true,
+      "regen_count": 0
+    }
+  },
+  {
+    "name": "case_07_high_adoption_with_deletion",
+    "payload": {
+      "ai_text": "Draft status update includes timeline budget risk mitigation and next sprint planning details.",
+      "final_text": "Draft status update includes timeline budget and planning.",
+      "latency_ms": 8000,
+      "accepted": true,
+      "regen_count": 1
+    }
+  },
+  {
+    "name": "case_08_high_adoption_with_manual_additions",
+    "payload": {
+      "ai_text": "Please acknowledge the issue and promise a fix by Friday.",
+      "final_text": "Please acknowledge the issue and promise a fix by Friday. Also explain root cause, customer impact, and preventive steps.",
+      "latency_ms": 9000,
+      "accepted": true,
+      "regen_count": 1
+    }
+  },
+  {
+    "name": "case_09_intent_preserved",
+    "payload": {
+      "ai_text": "Sorry for the delay. We can still deliver quickly.",
+      "final_text": "I am sorry for the delay, and I remain confident we can deliver on time with your priorities covered.",
+      "latency_ms": 6000,
+      "accepted": true,
+      "regen_count": 1
+    }
+  },
+  {
+    "name": "case_10_intent_violated",
+    "payload": {
+      "ai_text": "Project status update complete.",
+      "final_text": "Project status update complete.",
+      "latency_ms": 6000,
+      "accepted": true,
+      "regen_count": 1
+    }
+  },
+  {
+    "name": "case_11_missing_intent_text",
+    "payload": {
+      "ai_text": "Sorry for the delay. We can still deliver quickly.",
+      "final_text": "I am sorry for the delay, and I remain confident we can deliver on time with your priorities covered.",
+      "latency_ms": 6000,
+      "accepted": true,
+      "regen_count": 1
+    }
+  },
+  {
+    "name": "case_12_empty_ai_text",
+    "payload": {
+      "ai_text": "",
+      "final_text": "I wrote this message manually and provided my own reasoning and structure.",
+      "latency_ms": 12000,
+      "accepted": false,
+      "rejected": true,
+      "regen_count": 0
+    }
+  },
+  {
+    "name": "case_13_empty_final_text",
+    "payload": {
+      "ai_text": "This is a full suggested answer that the user may choose to reject.",
+      "final_text": "",
+      "latency_ms": 15000,
+      "accepted": false,
+      "rejected": true,
+      "regen_count": 0
+    }
+  },
+  {
+    "name": "case_14_punctuation_and_case_only",
+    "payload": {
+      "ai_text": "Hello, WORLD!!",
+      "final_text": "hello world",
+      "latency_ms": 1000,
+      "accepted": true,
+      "regen_count": 0
+    }
+  },
+  {
+    "name": "case_15_text_analysis_unavailable",
+    "payload": {
+      "ai_text": "Please send this brief project update to your team.",
+      "final_text": "Please send this project update to your team, and include blockers and next steps.",
+      "latency_ms": 7000,
+      "accepted": true,
+      "regen_count": 1
+    }
+  }
+]
