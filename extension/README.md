@@ -34,6 +34,50 @@ Default backend base URL is set in `shared/constants.js`:
 
 Adjust this before demo if your backend is hosted elsewhere.
 
+## Session Bridge (Dashboard -> Extension)
+Session lifecycle is bridged in-browser using:
+- `window.postMessage` from dashboard page
+- dashboard-only content script validator (`content/session_bridge.js`)
+- `chrome.runtime.sendMessage` to service worker
+
+Current dashboard bridge script is injected on:
+- `http://localhost/*`
+- `http://127.0.0.1/*`
+
+Message contract from dashboard page:
+
+```js
+window.postMessage(
+  {
+    type: "AGENCY_SESSION_START",
+    payload: {
+      sessionId: "uuid",
+      planId: "uuid-or-null",
+      agencyGoal: 70,
+      intentText: "I want this response to preserve my own reasoning.",
+      taskType: "study",
+      deadlineActive: false,
+      startedAt: new Date().toISOString(),
+      sessionVersion: "v1",
+    },
+  },
+  window.origin
+);
+
+window.postMessage(
+  {
+    type: "AGENCY_SESSION_END",
+    payload: { sessionId: "uuid" },
+  },
+  window.origin
+);
+```
+
+Security/validation behavior:
+- only accepts allowed origins (see `DASHBOARD_ALLOWED_ORIGINS` in `shared/constants.js`)
+- requires a valid `sessionId` for start/end
+- ignores unknown message types and malformed payloads
+
 ## Parity Gate
 Run parity before integration:
 

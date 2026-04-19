@@ -34,6 +34,20 @@ async function setSession(session) {
   await storage.set({ [constants.STORAGE_KEYS.SESSION]: session });
 }
 
+async function broadcastSessionSync(session) {
+  const tabs = await chrome.tabs.query({
+    url: ["*://*.chatgpt.com/*", "*://*.claude.ai/*", "*://*.gemini.google.com/*"],
+  });
+  for (const tab of tabs) {
+    if (tab.id !== undefined) {
+      chrome.tabs.sendMessage(tab.id, { type: "SESSION_SYNC", session }, () => {
+        const ignored = chrome.runtime.lastError;
+        void ignored;
+      });
+    }
+  }
+}
+
 async function clearSession() {
   await storage.remove([
     constants.STORAGE_KEYS.SESSION,
@@ -175,6 +189,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   (async () => {
     if (message.type === "SESSION_START") {
+      const startIso =
+        typeof message.started_at === "string" && message.started_at.trim()
+          ? message.started_at
+          : new Date().toISOString();
       const session = {
         session_id: message.session_id || null,
         plan_id: message.plan_id || null,
@@ -182,18 +200,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         deadline_active: Boolean(message.deadline_active),
         agency_goal: Number(message.agency_goal || 70),
         intent_text: message.intent_text || null,
-        started_at: new Date().toISOString(),
+        started_at: startIso,
+        session_version: message.session_version || startIso,
         tab_switch_count: 0,
       };
       await setSession(session);
+      await broadcastSessionSync(session);
       await ensureAlarm();
       sendResponse({ ok: true, session });
       return;
     }
 
     if (message.type === "SESSION_END") {
+      const state = await getState();
+      if (
+        message.session_id &&
+        state.session &&
+        state.session.session_id &&
+        state.session.session_id !== message.session_id
+      ) {
+        sendResponse({ ok: false, error: "session_id_mismatch" });
+        return;
+      }
       await flushPending();
       await clearSession();
+      await broadcastSessionSync(null);
       sendResponse({ ok: true });
       return;
     }

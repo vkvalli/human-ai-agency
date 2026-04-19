@@ -18,6 +18,19 @@
       LAST_BANNER_TIMES: "agency_last_banner_times",
       PENDING_FLUSH: "agency_pending_flush",
     },
+    DASHBOARD_ALLOWED_ORIGINS: [
+      "http://localhost",
+      "http://127.0.0.1",
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ],
+    DASHBOARD_MESSAGE_TYPES: {
+      START: "AGENCY_SESSION_START",
+      END: "AGENCY_SESSION_END",
+      CLEAR: "AGENCY_SESSION_CLEAR",
+    },
     SITE_CONFIGS: {
       "chatgpt.com": {
         aiResponseSelectors: [".markdown.prose", "article .markdown", "[data-message-author-role='assistant']"],

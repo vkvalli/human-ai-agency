@@ -141,6 +141,17 @@
     if (message.type === "SESSION_SYNC" && message.session) {
       state.session = { ...state.session, ...message.session };
     }
+
+    if (message.type === "SESSION_SYNC" && message.session === null) {
+      state.session = {
+        session_id: null,
+        plan_id: null,
+        task_type: "study",
+        deadline_active: false,
+        agency_goal: 70,
+        intent_text: null,
+      };
+    }
   });
 
   hydrateSession().then(() => {
