@@ -1,19 +1,103 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import AgencyBanner from "../components/dashboard/AgencyBanner";
 import AgencyTrendChart from "../components/dashboard/AgencyTrendChart";
 import DecisionAutonomyChart from "../components/dashboard/DecisionAutonomyChart";
 import Card from "../components/common/Card";
-import SectionHeader from "../components/common/SectionHeader";
 import LiveAgencyBanner from "../components/popup/LiveAgencyBanner";
 import TrackingSimulator from "../components/tracking/TrackingSimulator";
 import { useTracking } from "../src/context/TrackingContext";
-import { agencyTrend, popupInterventions } from "../data/mockData";
+
+function clampScore(value) {
+  return Math.max(50, Math.min(100, value));
+}
+
+function clampPercent(value) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function buildWeeklyTrend(score) {
+  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const offsets = [-12, -9, -7, -5, -3, -1, 0];
+
+  return labels.map((day, index) => ({
+    day,
+    score: clampScore(score + offsets[index]),
+  }));
+}
+
+function buildMonthlyTrend(score) {
+  const labels = ["Week 1", "Week 2", "Week 3", "Week 4"];
+  const offsets = [-10, -7, -4, 0];
+
+  return labels.map((day, index) => ({
+    day,
+    score: clampScore(score + offsets[index]),
+  }));
+}
+
+function buildMonthlyAutonomyData(metrics) {
+  const autonomous = clampPercent(
+    metrics.autonomous - (metrics.deadlineTriggers > 0 ? 4 : 2)
+  );
+  const aiLed = clampPercent(metrics.aiLed + (metrics.aiAccepts > 0 ? 3 : 1));
+  const mixed = Math.max(0, 100 - autonomous - aiLed);
+
+  return [
+    { name: "Autonomous", value: autonomous },
+    { name: "AI-led", value: aiLed },
+    { name: "Mixed", value: mixed },
+  ];
+}
+
+function RangeToggle({ value, onChange }) {
+  return (
+    <div className="inline-flex rounded-full border border-cyan-200 bg-slate-50 p-1">
+      <button
+        type="button"
+        onClick={() => onChange("week")}
+        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+          value === "week"
+            ? "bg-cyan-500 text-white shadow-sm"
+            : "text-cyan-700 hover:bg-cyan-100"
+        }`}
+      >
+        1 week
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("month")}
+        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+          value === "month"
+            ? "bg-cyan-500 text-white shadow-sm"
+            : "text-cyan-700 hover:bg-cyan-100"
+        }`}
+      >
+        1 month
+      </button>
+    </div>
+  );
+}
+
+function ChartCardHeader({ title, description, range, onRangeChange }) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h3 className="text-lg font-semibold tracking-tight text-cyan-800">
+          {title}
+        </h3>
+        <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+      </div>
+
+      <RangeToggle value={range} onChange={onRangeChange} />
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { metrics } = useTracking();
-
   const insightsSectionRef = useRef(null);
-
+  const [trendRange, setTrendRange] = useState("week");
+  const [autonomyRange, setAutonomyRange] = useState("week");
 
   const agencySummary = {
     score: metrics.score,
@@ -34,6 +118,16 @@ export default function HomePage() {
     { name: "Mixed", value: metrics.mixed },
   ];
 
+  const trendData =
+    trendRange === "week"
+      ? buildWeeklyTrend(metrics.score)
+      : buildMonthlyTrend(metrics.score);
+
+  const decisionAutonomyData =
+    autonomyRange === "week"
+      ? autonomyData
+      : buildMonthlyAutonomyData(metrics);
+
   const handleViewInsights = () => {
     insightsSectionRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -48,31 +142,35 @@ export default function HomePage() {
         onViewInsights={handleViewInsights}
       />
 
-      <LiveAgencyBanner
-        status={liveAgencyStatus}
-        onOpen={() => setOpenModal(true)}
-      />
+      <LiveAgencyBanner status={liveAgencyStatus} />
 
       <TrackingSimulator />
 
       <div ref={insightsSectionRef} className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <SectionHeader
+        <Card className="min-w-0 p-6 sm:p-7">
+          <ChartCardHeader
             title="Agency Index Graph"
             description="Trend of decision ownership"
+            range={trendRange}
+            onRangeChange={setTrendRange}
           />
-          <AgencyTrendChart data={agencyTrend} />
+          <div className="mt-5 min-w-0">
+            <AgencyTrendChart data={trendData} />
+          </div>
         </Card>
 
-        <Card>
-          <SectionHeader
+        <Card className="min-w-0 p-6 sm:p-7">
+          <ChartCardHeader
             title="Decision Autonomy"
             description="Autonomous vs AI-led decisions"
+            range={autonomyRange}
+            onRangeChange={setAutonomyRange}
           />
-          <DecisionAutonomyChart data={autonomyData} />
+          <div className="mt-5 min-w-0">
+            <DecisionAutonomyChart data={decisionAutonomyData} />
+          </div>
         </Card>
       </div>
-
     </div>
   );
 }
