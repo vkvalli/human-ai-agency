@@ -50,24 +50,41 @@ function buildMonthlyAutonomyData(metrics) {
 }
 
 function buildHistoryTrend(historyScores, range) {
-  const maxPoints = range === "week" ? 7 : 30;
-  const selected = historyScores.slice(-maxPoints);
-  if (!selected.length) {
+  if (!historyScores.length) {
     return [];
   }
 
-  return selected.map((point) => {
+  // Group raw score events by calendar day first — otherwise a burst of many
+  // events within a single day fills the entire "week"/"month" window and the
+  // range toggle stops meaning anything.
+  const byDay = new Map();
+  for (const point of historyScores) {
     const scoredAt = new Date(point.scored_at);
-    const label =
-      range === "week"
-        ? scoredAt.toLocaleDateString([], { weekday: "short" })
-        : scoredAt.toLocaleDateString([], { month: "short", day: "numeric" });
+    const dayKey = scoredAt.toDateString();
+    const score = clampScore(Number(point.agency_score || 0));
+    if (!byDay.has(dayKey)) {
+      byDay.set(dayKey, { date: scoredAt, scores: [] });
+    }
+    byDay.get(dayKey).scores.push(score);
+  }
 
-    return {
-      day: label,
-      score: clampScore(Number(point.agency_score || 0)),
-    };
-  });
+  const dailyPoints = Array.from(byDay.values())
+    .sort((a, b) => a.date - b.date)
+    .map(({ date, scores }) => ({
+      date,
+      score: Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length),
+    }));
+
+  const maxDays = range === "week" ? 7 : 30;
+  const selected = dailyPoints.slice(-maxDays);
+
+  return selected.map(({ date, score }) => ({
+    day:
+      range === "week"
+        ? date.toLocaleDateString([], { weekday: "short" })
+        : date.toLocaleDateString([], { month: "short", day: "numeric" }),
+    score,
+  }));
 }
 
 function RangeToggle({ value, onChange }) {

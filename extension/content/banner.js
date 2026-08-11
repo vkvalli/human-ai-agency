@@ -94,9 +94,86 @@
     });
   }
 
+  const CHECKLIST_ID = "agency-keep-points-root";
+
+  function ensureChecklistShadow() {
+    let host = document.getElementById(CHECKLIST_ID);
+    if (!host) {
+      host = document.createElement("div");
+      host.id = CHECKLIST_ID;
+      host.style.position = "fixed";
+      host.style.bottom = "16px";
+      host.style.right = "16px";
+      host.style.zIndex = "2147483647";
+      document.documentElement.appendChild(host);
+    }
+    const shadow = host.shadowRoot || host.attachShadow({ mode: "open" });
+    if (!shadow.getElementById("agency-checklist-style")) {
+      const style = document.createElement("style");
+      style.id = "agency-checklist-style";
+      style.textContent = `
+        .panel { font-family: Inter, system-ui, sans-serif; min-width: 260px; max-width: 340px; border-radius: 14px; padding: 12px 14px; box-shadow: 0 14px 30px rgba(15,23,42,.22); border: 1px solid rgba(255,255,255,.14); background: #0f172a; color: #e2e8f0; }
+        .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .title { font-size: 11px; opacity: .8; margin: 0; text-transform: uppercase; letter-spacing: .04em; }
+        .close { cursor: pointer; opacity: .6; font-size: 14px; line-height: 1; background: none; border: none; color: inherit; }
+        .close:hover { opacity: 1; }
+        .item { display: flex; gap: 8px; align-items: flex-start; padding: 5px 0; font-size: 12.5px; line-height: 1.4; }
+        .icon { flex: none; width: 16px; text-align: center; }
+        .ok .icon { color: #4ade80; }
+        .risk .icon { color: #fbbf24; }
+        .text { opacity: .95; }
+      `;
+      shadow.appendChild(style);
+    }
+    return shadow;
+  }
+
+  function showKeepPointsChecklist(results) {
+    if (!Array.isArray(results) || !results.length) return;
+    const shadow = ensureChecklistShadow();
+    let panel = shadow.getElementById("agency-checklist-panel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "agency-checklist-panel";
+      panel.className = "panel";
+      shadow.appendChild(panel);
+    }
+
+    const items = results
+      .map((r) => {
+        const cls = r.satisfied ? "ok" : "risk";
+        const icon = r.satisfied ? "✓" : "⚠";
+        return `<div class="item ${cls}"><span class="icon">${icon}</span><span class="text">${r.point}</span></div>`;
+      })
+      .join("");
+
+    panel.innerHTML = `
+      <div class="head">
+        <p class="title">Must Keep Points</p>
+        <button class="close" type="button" aria-label="Dismiss">×</button>
+      </div>
+      ${items}
+    `;
+
+    const closeBtn = panel.querySelector(".close");
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        const host = document.getElementById(CHECKLIST_ID);
+        if (host) host.remove();
+      };
+    }
+  }
+
+  function hideKeepPointsChecklist() {
+    const host = document.getElementById(CHECKLIST_ID);
+    if (host) host.remove();
+  }
+
   ns.banner = {
     showPreBanner,
     showScoreBanner,
     showDriftBanner,
+    showKeepPointsChecklist,
+    hideKeepPointsChecklist,
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

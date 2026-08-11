@@ -37,6 +37,7 @@
         "content/scorer/features.js",
         "content/scorer/heuristic.js",
         "content/scorer/formula.js",
+        "content/scorer/intent.js",
         "content/scorer/index.js",
         "content/extractor.js",
         "content/observer.js",

@@ -89,6 +89,20 @@ async function setSession(session) {
   await storage.set({ [constants.STORAGE_KEYS.SESSION]: session });
 }
 
+async function getOrCreateExtUserId() {
+  const data = await storage.get([constants.STORAGE_KEYS.EXT_USER_ID]);
+  let userId = data[constants.STORAGE_KEYS.EXT_USER_ID];
+  if (typeof userId === "string" && userId.trim()) {
+    return userId.trim();
+  }
+  userId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `ext-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  await storage.set({ [constants.STORAGE_KEYS.EXT_USER_ID]: userId });
+  return userId;
+}
+
 async function setLastStatus(status) {
   const payload = {
     status: status?.status || "unscored",
@@ -277,6 +291,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         deadline_active: Boolean(message.deadline_active),
         agency_goal: Number(message.agency_goal || 70),
         intent_text: message.intent_text || null,
+        must_keep_points: Array.isArray(message.must_keep_points) ? message.must_keep_points : [],
         started_at: startIso,
         session_version: message.session_version || startIso,
         tab_switch_count: 0,
@@ -445,6 +460,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
 
       sendResponse({ ok: true });
+      return;
+    }
+
+    if (message.type === "GET_EXT_USER_ID") {
+      const userId = await getOrCreateExtUserId();
+      sendResponse({ ok: true, user_id: userId });
+      return;
+    }
+
+    if (message.type === "CLASSIFY_INTENT") {
+      try {
+        const endpoint = `${constants.API_BASE_URL}/classify-intent`;
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: message.text || "" }),
+        });
+        if (!response.ok) {
+          sendResponse({ ok: false });
+          return;
+        }
+        const data = await response.json();
+        sendResponse({
+          ok: true,
+          intent: data.intent || null,
+          polarity: data.polarity || null,
+          confidence: Number(data.confidence || 0),
+        });
+      } catch (error) {
+        sendResponse({ ok: false });
+      }
       return;
     }
 

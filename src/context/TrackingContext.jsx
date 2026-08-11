@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { sampleTrackingEvents } from "../../data/trackingEvents";
+import { requestExtensionUserId, adoptDashboardUserId } from "../utils/extensionSessionBridge";
 
 const TrackingContext = createContext(null);
 const USER_ID_STORAGE_KEY = "agency_dashboard_user_id";
@@ -266,6 +267,14 @@ export function TrackingProvider({ children }) {
       setUserId((current) => (current === next ? current : next));
     }, 1000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    requestExtensionUserId().then((extUserId) => {
+      if (!extUserId) return;
+      adoptDashboardUserId(extUserId);
+      setUserId((current) => (current === extUserId ? current : extUserId));
+    });
   }, []);
 
   useEffect(() => {

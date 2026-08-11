@@ -148,6 +148,10 @@
       confidence += 0.45;
     } else if (aiTextLength >= 20 && adoptionRatio >= 0.75) {
       confidence += 0.3;
+    } else if (aiTextLength >= 20) {
+      // A real AI response was captured even though the user didn't adopt it verbatim —
+      // that's still valid context (e.g. a rejected suggestion or a full rewrite).
+      confidence += 0.2;
     }
     if (asBool(regenerateObserved)) {
       confidence += 0.2;
@@ -158,14 +162,15 @@
     if (acceptCount > 0) {
       confidence += 0.25;
     }
+    if (rejectCount > 0) {
+      // An explicit rejection is itself evidence the user engaged with real AI context.
+      confidence += 0.15;
+    }
     if (quickAccept) {
       confidence += 0.15;
     }
     if (acceptCount > 0 && latencyMs > 0 && latencyMs <= 8000) {
       confidence += 0.1;
-    }
-    if (rejectCount > acceptCount) {
-      confidence -= 0.1;
     }
     if (aiContextAgeMs > 60 * 1000) {
       confidence -= 0.2;

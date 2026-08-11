@@ -57,13 +57,15 @@
     const regenPenalty = Math.min(features.regen_count / 3, 1);
 
     let risk =
-      0.12 +
-      0.22 * (features.quick_accept ? 1 : 0) +
-      0.18 * latencyFactor +
-      0.12 * (features.accept_count > 0 ? 1 : 0) +
-      0.12 * (1 - regenPenalty) +
-      0.18 * features.ai_context_confidence +
-      0.06 * Math.min(features.adoption_ratio, 0.6);
+      0.08 +
+      0.16 * (features.quick_accept ? 1 : 0) +
+      0.12 * latencyFactor +
+      0.08 * (features.accept_count > 0 ? 1 : 0) +
+      0.08 * (1 - regenPenalty) +
+      0.12 * features.ai_context_confidence +
+      0.28 * features.adoption_ratio +
+      0.08 * (1 - features.manual_addition_ratio) -
+      0.08 * features.delete_ratio;
 
     if (features.reject_count > features.accept_count) {
       risk -= 0.1;
@@ -71,25 +73,19 @@
 
     const relianceRisk = Math.round(clamp01(risk) * 1000) / 1000;
     const drivers = [];
-    if (features.quick_accept) {
-      drivers.push("quick acceptance pattern detected");
-    }
+    if (features.quick_accept) drivers.push("quick acceptance pattern detected");
+    if (features.adoption_ratio > 0.6) drivers.push("high AI adoption ratio");
+    if (features.manual_addition_ratio > 0.4) drivers.push("substantial manual additions");
+    if (features.delete_ratio > 0.25) drivers.push("user removed notable AI content");
     if (features.latency_ms > 0 && features.latency_ms < 6000) {
       drivers.push("limited evidence of review before submission");
     }
     drivers.push("AI-assisted context detected with incomplete capture");
 
-    let decisionType = "mixed";
-    if (features.quick_accept && features.accept_count > 0 && features.ai_context_confidence >= 0.55) {
-      decisionType = "ai_led";
-    } else if (features.reject_count > features.accept_count || features.regen_count >= 2) {
-      decisionType = "user_led";
-    }
-
     return {
       reliance_risk: relianceRisk,
       reliance_band: riskBand(relianceRisk),
-      decision_type: decisionType,
+      decision_type: deriveLabel(features),
       drivers,
     };
   }

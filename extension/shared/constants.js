@@ -31,6 +31,7 @@
       LAST_STATUS: "agency_last_status",
       CONTENT_STATUS: "agency_content_status",
       DEBUG_TRACE: "agency_debug_trace",
+      EXT_USER_ID: "agency_ext_user_id",
     },
     DASHBOARD_ALLOWED_ORIGINS: [
       "http://localhost",
@@ -44,6 +45,8 @@
       START: "AGENCY_SESSION_START",
       END: "AGENCY_SESSION_END",
       CLEAR: "AGENCY_SESSION_CLEAR",
+      EXT_USER_ID_REQUEST: "AGENCY_EXT_USER_ID_REQUEST",
+      EXT_USER_ID_RESPONSE: "AGENCY_EXT_USER_ID_RESPONSE",
     },
     SITE_CONFIGS: {
       "chatgpt.com": {
