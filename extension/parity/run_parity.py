@@ -86,6 +86,12 @@ def main() -> int:
                     f"{name}: feature {key} mismatch py={p['features'][key]} js={j['features'][key]}"
                 )
 
+        # The JS on-device scorer applies an extra confidence gate (no Python equivalent): it can
+        # decline to score a case as "unscored", or score it with a separate low-confidence
+        # "partial" heuristic. Python only mirrors JS's "full" mode, so only compare there.
+        if j.get("status") == "unscored" or j.get("score_mode") != "full":
+            continue
+
         for key in ("reliance_risk",):
             if not _is_close(p["score"][key], j["score"][key]):
                 mismatches.append(f"{name}: score {key} mismatch py={p['score'][key]} js={j['score'][key]}")

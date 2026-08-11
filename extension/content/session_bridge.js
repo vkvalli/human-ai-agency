@@ -25,6 +25,11 @@
     return Math.max(0, Math.min(100, parsed));
   }
 
+  function toStringArray(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map((item) => asString(item)).filter(Boolean);
+  }
+
   function buildStartMessage(payload) {
     const sessionId = asString(payload.sessionId || payload.session_id);
     if (!sessionId) return null;
@@ -40,6 +45,7 @@
       deadline_active: toBoolean(payload.deadlineActive || payload.deadline_active),
       started_at: asString(payload.startedAt || payload.started_at) || new Date().toISOString(),
       session_version: asString(payload.sessionVersion || payload.session_version),
+      must_keep_points: toStringArray(payload.mustKeepPoints || payload.must_keep_points),
     };
   }
 
@@ -91,6 +97,21 @@
 
     if (msgType === constants.DASHBOARD_MESSAGE_TYPES.CLEAR) {
       forwardToWorker(buildClearMessage());
+      return;
+    }
+
+    if (msgType === constants.DASHBOARD_MESSAGE_TYPES.EXT_USER_ID_REQUEST) {
+      chrome.runtime.sendMessage({ type: "GET_EXT_USER_ID" }, (response) => {
+        const ignored = chrome.runtime.lastError;
+        void ignored;
+        window.postMessage(
+          {
+            type: constants.DASHBOARD_MESSAGE_TYPES.EXT_USER_ID_RESPONSE,
+            payload: { userId: response && response.user_id ? response.user_id : null },
+          },
+          window.origin
+        );
+      });
     }
   });
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -19,6 +19,7 @@
   }
 
   const state = {
+    extUserId: null,
     lastSuggestionAt: 0,
     regenCount: 0,
     acceptCount: 0,
@@ -40,6 +41,7 @@
       deadline_active: false,
       agency_goal: 70,
       intent_text: null,
+      must_keep_points: [],
     },
   };
 
@@ -105,6 +107,45 @@
     }
   }
 
+  function hydrateExtUserId() {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "GET_EXT_USER_ID" }, (response) => {
+        const ignored = chrome.runtime.lastError;
+        void ignored;
+        state.extUserId = response && response.user_id ? response.user_id : null;
+        resolve();
+      });
+    });
+  }
+
+  function requestRemoteIntent(text, timeoutMs = 1800) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        resolve(null);
+      }, timeoutMs);
+
+      chrome.runtime.sendMessage({ type: "CLASSIFY_INTENT", text }, (response) => {
+        const ignored = chrome.runtime.lastError;
+        void ignored;
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (response && response.ok && response.intent) {
+          resolve({
+            intent: response.intent,
+            polarity: response.polarity,
+            confidence: response.confidence,
+          });
+        } else {
+          resolve(null);
+        }
+      });
+    });
+  }
+
   function buildEventPayload(snapshot, overrides = {}) {
     const aiText = overrides.ai_text || state.aiContext.lastAiText || snapshot.ai_text || "";
     const finalText = overrides.final_text || snapshot.final_text || "";
@@ -137,6 +178,7 @@
       score_confidence: computed.score_confidence,
       reason: computed.reason || null,
       session_id: state.session.session_id,
+      user_id: state.extUserId,
       plan_id: state.session.plan_id,
       task_type: state.session.task_type,
       deadline_active: state.session.deadline_active,
@@ -181,7 +223,7 @@
     }
   }
 
-  function handleScoredInteraction(source, overrides = {}) {
+  async function handleScoredInteraction(source, overrides = {}) {
     sendDebugEvent("handle_scored_interaction", { source });
     const snapshot = ns.extractor.extractSnapshot(siteConfig);
 
@@ -210,7 +252,8 @@
     }
 
     const payload = buildEventPayload(snapshot, overrides);
-    const computed = ns.scorer.computeScore(payload);
+    const remoteIntent = await requestRemoteIntent(payload.final_text);
+    const computed = ns.scorer.computeScore(payload, { intentOverride: remoteIntent });
     sendDebugEvent("scorer_result", {
       source,
       status: computed.status,
@@ -242,6 +285,14 @@
     if (shouldRenderBanner && bannerFingerprint !== state.lastBannerFingerprint) {
       ns.banner.showScoreBanner(computed.score);
       state.lastBannerFingerprint = bannerFingerprint;
+    }
+
+    if (ns.scorerIntent && state.session.must_keep_points?.length) {
+      const keepPointResults = ns.scorerIntent.evaluateKeepPoints(state.session.must_keep_points, {
+        features: computed.features,
+        score: computed.score,
+      });
+      ns.banner.showKeepPointsChecklist(keepPointResults);
     }
 
     const summary = summarizeForWorker(computed, payload);
@@ -343,6 +394,7 @@
     }
 
     if (message.type === "SESSION_SYNC" && message.session === null) {
+      ns.banner?.hideKeepPointsChecklist();
       state.session = {
         session_id: null,
         plan_id: null,
@@ -350,6 +402,7 @@
         deadline_active: false,
         agency_goal: 70,
         intent_text: null,
+        must_keep_points: [],
       };
       state.aiContext = {
         lastAiText: "",
@@ -361,6 +414,8 @@
       };
     }
   });
+
+  hydrateExtUserId();
 
   hydrateSession().then(() => {
     obs.start();

@@ -118,6 +118,40 @@ export function getActiveDashboardSession() {
   return getStoredJson(SESSION_STORAGE_KEY);
 }
 
+export function adoptDashboardUserId(userId) {
+  const normalized = asString(userId);
+  if (!normalized || typeof window === "undefined") return;
+  window.localStorage.setItem(USER_ID_STORAGE_KEY, normalized);
+}
+
+export function requestExtensionUserId({ timeoutMs = 800 } = {}) {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(null);
+      return;
+    }
+
+    let settled = false;
+
+    function finish(value) {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("message", onMessage);
+      resolve(value);
+    }
+
+    function onMessage(event) {
+      if (event.source !== window) return;
+      if (!event.data || event.data.type !== "AGENCY_EXT_USER_ID_RESPONSE") return;
+      finish(asString(event.data.payload?.userId) || null);
+    }
+
+    window.addEventListener("message", onMessage);
+    postBridgeMessage("AGENCY_EXT_USER_ID_REQUEST", {});
+    window.setTimeout(() => finish(null), timeoutMs);
+  });
+}
+
 export async function startDashboardSession({
   intentText = "",
   agencyGoal = 70,
@@ -125,11 +159,15 @@ export async function startDashboardSession({
   deadlineActive = false,
   planId = "",
   sessionVersion = "",
+  mustKeepPoints = [],
 } = {}) {
   const normalizedIntent = asString(intentText);
   const normalizedTaskType = asString(taskType) || "study";
   const normalizedPlanId = asString(planId);
   const normalizedGoal = clampGoal(agencyGoal);
+  const normalizedKeepPoints = Array.isArray(mustKeepPoints)
+    ? mustKeepPoints.map((p) => asString(p)).filter(Boolean)
+    : [];
   const normalizedVersion = asString(sessionVersion) || `${Date.now()}`;
   const userId = getOrCreateUserId();
   const apiBaseUrl =
@@ -160,6 +198,7 @@ export async function startDashboardSession({
     taskType: normalizedTaskType,
     deadlineActive: Boolean(deadlineActive),
     sessionVersion: normalizedVersion,
+    mustKeepPoints: normalizedKeepPoints,
     source: session?.source || "local",
   };
 

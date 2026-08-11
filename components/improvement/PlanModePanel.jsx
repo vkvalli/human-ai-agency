@@ -70,11 +70,17 @@ export default function PlanModePanel({ plan, agencyGoalTarget = 70 }) {
     setStatusText("Starting session bridge...");
 
     try {
+      const mustKeepPoints = (form.mustKeepPoints || plan.mustKeepPoints || "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+
       const session = await startDashboardSession({
         intentText: form.intent || plan.intent || "",
         agencyGoal: Number(agencyGoalTarget || 70),
         taskType: "study",
         deadlineActive: Boolean((form.deadline || "").trim()),
+        mustKeepPoints,
       });
       setActiveSession(session);
       setStatusText(

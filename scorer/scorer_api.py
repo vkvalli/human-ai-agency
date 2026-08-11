@@ -154,6 +154,25 @@ class InsightsResponse(BaseModel):
     avg_by_task_type: dict[str, float] = Field(default_factory=dict)
 
 
+class ClassifyIntentRequest(BaseModel):
+    text: str
+
+
+class ClassifyIntentResponse(BaseModel):
+    intent: Optional[str] = None
+    polarity: Optional[str] = None
+    confidence: float = 0.0
+
+
+class ClassifyIntentFeedbackRequest(BaseModel):
+    text: str
+    category: str
+
+
+class ClassifyIntentFeedbackResponse(BaseModel):
+    ok: bool
+
+
 class NordProtectWebhookPayload(BaseModel):
     user_id: str
 
@@ -403,6 +422,22 @@ def health() -> dict[str, Any]:
         "status": "ok",
         "ml_enabled": _env_flag("USE_ML_SCORER", False),
     }
+
+
+@app.post("/classify-intent", response_model=ClassifyIntentResponse)
+async def classify_intent(payload: ClassifyIntentRequest) -> ClassifyIntentResponse:
+    from scorer.intent_classifier import classify_intent as run_classifier
+
+    result = run_classifier(payload.text)
+    return ClassifyIntentResponse(**result)
+
+
+@app.post("/classify-intent/feedback", response_model=ClassifyIntentFeedbackResponse)
+async def classify_intent_feedback(payload: ClassifyIntentFeedbackRequest) -> ClassifyIntentFeedbackResponse:
+    from scorer.intent_classifier import add_example
+
+    ok = add_example(payload.category, payload.text)
+    return ClassifyIntentFeedbackResponse(ok=ok)
 
 
 @app.post("/session/start", response_model=SessionStartResponse)
